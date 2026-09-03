@@ -1,122 +1,138 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState } from "react";
+import { useAuth } from "./auth/AuthContext";
+import { hasAnthropicKey } from "./config/env";
+import { AdminView } from "./features/admin/AdminView";
+import { ChatView } from "./features/chat/ChatView";
+import { useRepositories } from "./repositories/RepositoryContext";
+import { useSettings } from "./settings/SettingsContext";
 
-function App() {
-  const [count, setCount] = useState(0)
+function DataSourceBadge() {
+  const { source } = useRepositories();
+  if (source === "square") {
+    return (
+      <span className="badge badge--live">
+        <span className="dot" /> Square
+      </span>
+    );
+  }
+  return (
+    <span className="badge badge--mock">
+      <span className="dot" /> Demo data
+    </span>
+  );
+}
+
+function SettingsPanel({ onClose }: { onClose: () => void }) {
+  const { role, setRole } = useAuth();
+  const { requireConfirmation, setRequireConfirmation } = useSettings();
+  const { source } = useRepositories();
 
   return (
     <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+      <div
+        style={{ position: "fixed", inset: 0, zIndex: 25 }}
+        onClick={onClose}
+      />
+      <div className="settings-panel" role="dialog" aria-label="Settings">
+        <h4>Settings</h4>
+        <div className="settings-row">
+          <span>View as</span>
+          <select
+            className="mini-select"
+            value={role}
+            onChange={(e) => setRole(e.target.value as "admin" | "staff")}
+          >
+            <option value="admin">Admin</option>
+            <option value="staff">Staff (read-only)</option>
+          </select>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
+        <div className="settings-row">
+          <span>Confirm every change</span>
+          <input
+            type="checkbox"
+            className="switch"
+            checked={requireConfirmation}
+            onChange={(e) => setRequireConfirmation(e.target.checked)}
+          />
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+        <div className="settings-row">
+          <span>Catalog source</span>
+          <span style={{ color: "var(--muted)" }}>
+            {source === "square" ? "Square (live)" : "Mock fixtures"}
+          </span>
+        </div>
+        <div className="settings-row">
+          <span>Agent</span>
+          <span style={{ color: "var(--muted)" }}>
+            {hasAnthropicKey ? "Claude" : "Offline parser"}
+          </span>
+        </div>
+        <p
+          style={{
+            marginTop: 10,
+            fontSize: "0.75rem",
+            color: "var(--muted)",
+          }}
         >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
+          Set <code>VITE_DATA_SOURCE</code>, <code>SQUARE_ACCESS_TOKEN</code> and{" "}
+          <code>VITE_ANTHROPIC_API_KEY</code> in <code>.env.local</code>.
+        </p>
+      </div>
     </>
-  )
+  );
 }
 
-export default App
+export default function App() {
+  const { view, setView } = useSettings();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  return (
+    <div className="app">
+      <header className="app-header">
+        <span className="app-brand">
+          <span className="mark">c</span>
+          Cà phê Việt
+        </span>
+        <span className="spacer" />
+        <DataSourceBadge />
+        <button
+          className="icon-btn"
+          aria-label="Settings"
+          onClick={() => setSettingsOpen((v) => !v)}
+        >
+          ⚙
+        </button>
+        {settingsOpen && (
+          <SettingsPanel onClose={() => setSettingsOpen(false)} />
+        )}
+      </header>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          padding: "10px 14px 0",
+        }}
+      >
+        <div className="seg" role="group" aria-label="Switch view">
+          <button
+            aria-pressed={view === "chat"}
+            onClick={() => setView("chat")}
+          >
+            Chat
+          </button>
+          <button
+            aria-pressed={view === "admin"}
+            onClick={() => setView("admin")}
+          >
+            Manage menu
+          </button>
+        </div>
+      </div>
+
+      <main className="app-main">
+        {view === "chat" ? <ChatView /> : <AdminView />}
+      </main>
+    </div>
+  );
+}

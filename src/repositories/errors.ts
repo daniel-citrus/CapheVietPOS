@@ -3,8 +3,8 @@
  * HttpRepository both throw these so callers handle failure identically.
  */
 export class RepositoryError extends Error {
-  constructor(message: string, readonly cause?: unknown) {
-    super(message);
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
     this.name = "RepositoryError";
   }
 }
