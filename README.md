@@ -1,9 +1,15 @@
-# Cà phê Việt — agent-first menu admin
+# Cà phê Việt — menu admin
 
-A mobile-first admin surface for a Vietnamese-branded coffee shop whose menu
-lives in Square. **Chat is the primary interface** — you tell the assistant what
-to do to the menu and approve each change. A conventional "Manage menu" screen is
-one tap away for browsing and hand-editing.
+A mobile-first admin app for a Vietnamese-branded coffee shop whose menu lives in
+Square. It has **two surfaces behind one toggle** (top-right of every screen):
+
+| Mode | What it is |
+|---|---|
+| **Assistant** (default) | Agent-first chat. You tell it what to do to the menu — "raise all cà phê sữa đá prices by 25¢", "add a large bạc xỉu at $5.50", "archive chè ba màu" — and approve each change on an **Apply / Skip** card. With `VITE_ANTHROPIC_API_KEY` it's Claude with tool use; without a key it falls back to a small offline command parser. |
+| **Console** | The conventional admin console: Items (list / detail / create), Categories, Modifier groups, Pricing, and navigable Reporting / Analytics / Order-history scaffolds. Sidebar nav, role-gated edit actions. |
+
+Both surfaces run against the same `CatalogRepository`, so a change made in one
+shows up in the other.
 
 ```
 npm install
@@ -11,65 +17,64 @@ cp .env.example .env.local   # then fill in values
 npm run dev
 ```
 
-Open the local URL on a phone-sized viewport (or your phone on the same network
-with `npm run dev -- --host`).
-
-## The two surfaces
-
-| | |
-|---|---|
-| **Chat** (default) | Natural-language menu management. "Raise all cà phê sữa đá prices by 25¢", "add a large bạc xỉu at $5.50", "archive chè ba màu". Every mutation shows an **Apply / Skip** card first. |
-| **Manage menu** | Category filter, item cards, and a bottom-sheet editor for name / description / category / variations / prices / archived state. Also has **New item**. |
-
-Toggle between them with the segmented control under the header. The choice, and
-the "confirm every change" preference, persist in `localStorage`.
-
-Changes made in either surface show up in the other immediately.
+Defaults to `VITE_DATA_SOURCE=mock` (in-memory fixtures, no token needed).
 
 ## Configuration (`.env.local`)
 
 | Variable | Purpose |
 |---|---|
-| `VITE_DATA_SOURCE` | `mock` (in-memory fixtures, default) or `square` (live catalog via the dev proxy). |
+| `VITE_DATA_SOURCE` | `mock` (fixtures, default) or `square` (live catalog via the dev proxy). |
 | `SQUARE_ACCESS_TOKEN` | Square access token. **Read only by the Vite dev server** (`vite.config.ts`) and injected into `/api/square/*` requests — never bundled into the browser, never `VITE_`-prefixed. |
-| `SQUARE_ENVIRONMENT` | `sandbox` or `production` — picks the Square host the proxy targets. |
+| `SQUARE_ENVIRONMENT` | `sandbox` or `production` — picks the Square host. |
 | `SQUARE_LOCATION_ID` | Optional. Pin a single location. |
-| `VITE_ANTHROPIC_API_KEY` | Optional. Enables the Claude-powered conversational agent. Without it, chat falls back to a small offline command parser. |
+| `VITE_ANTHROPIC_API_KEY` | Optional. Enables the Claude-powered assistant. Without it, chat uses the offline parser. |
 | `VITE_AGENT_MODEL` | Agent model id (default `claude-sonnet-5`). |
 
 ### How the Square token stays server-side
 
 The browser calls `/api/square/v2/...`. `vite.config.ts` proxies that to
 `connect.squareup(sandbox).com`, adding `Authorization: Bearer <SQUARE_ACCESS_TOKEN>`
-in the dev server process. When this moves to production, replace that proxy with
-a real backend function — the app code does not change.
+in the dev-server process. Moving to production means replacing that proxy with a
+real backend function — the app code does not change.
+
+### Freezing a real menu as fixtures (optional)
+
+`npm run export:catalog` pulls the real catalog + locations from Square once
+(using `SQUARE_ACCESS_TOKEN` from `.env.local`) and writes
+`src/repositories/mock/fixtures.generated.json`. The mock repository picks it up
+automatically. Orders and customers are never pulled.
 
 ## Architecture
 
 ```
 src/
-  config/env.ts             browser-visible config (no secrets)
+  config/env.ts               browser-visible config (no secrets)
+  settings/SettingsContext    persists the Assistant/Console mode + confirm toggle
   repositories/
-    CatalogRepository.ts     the interface every surface talks to
-    mock/                     in-memory fixtures implementation
-    square/                   Square Catalog implementation + anti-corruption mapper
-    RepositoryContext.tsx     picks mock vs square from VITE_DATA_SOURCE
+    CatalogRepository.ts       the interface both surfaces talk to
+    mock/                      in-memory fixtures implementation
+    square/                    Square Catalog implementation + anti-corruption mapper
+    RepositoryContext.tsx      picks mock vs square from VITE_DATA_SOURCE
   agent/
-    catalogTools.ts           tool specs + dispatch → one CatalogRepository call each
-    ClaudeAgent.ts            Anthropic tool-use loop, pauses for confirmation
-    OfflineAgent.ts           no-key fallback: regex intents → same toolbox
-    useAgent.ts               React hook wiring the loop to the chat UI
+    catalogTools.ts            tool specs + dispatch → one CatalogRepository call each
+    ClaudeAgent.ts             Anthropic tool-use loop, pauses for confirmation
+    OfflineAgent.ts            no-key fallback: regex intents → same toolbox
+    useAgent.ts                React hook wiring the loop to the chat UI
   features/
-    chat/ChatView.tsx
-    admin/AdminView.tsx, ItemEditor.tsx
+    assistant/AssistantView    mobile chat shell (mode toggle lives in its header)
+    chat/ChatView              the transcript + composer + confirmation cards
+  layout/AppShell               conventional console shell (sidebar + mode toggle)
+  routes/                       console pages (catalog / pricing / reports)
+  components/ModeToggle         the Assistant ⟷ Console switch, in both shells
 ```
 
-The agent and the admin UI both go through `CatalogRepository` — the agent adds
-no backend of its own. Swapping `MockCatalogRepository` for `SquareCatalogRepository`
-is a one-line change in `RepositoryContext.tsx` (driven by env).
+The agent adds no backend of its own — its tools call the same repository the
+console uses. Swapping `MockCatalogRepository` for `SquareCatalogRepository` is
+env-driven in `RepositoryContext.tsx`.
 
 ## Notes
 
 - Mock writes are in-memory; a refresh reverts to fixtures.
+- Light theme only for now, so the two surfaces stay visually coherent.
 - `DOMAIN.md` is the catalog model (a faithful projection of Square's Catalog API).
 - No test framework yet — the repository/toolbox layer is thin and verified by eye.

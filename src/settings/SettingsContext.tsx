@@ -7,12 +7,13 @@ import {
   type ReactNode,
 } from "react";
 
-export type ViewMode = "chat" | "admin";
+/** Which top-level surface is showing. */
+export type AppMode = "assistant" | "console";
 
 interface Settings {
-  /** Which surface is showing: the chat agent or the conventional admin UI. */
-  view: ViewMode;
-  setView: (v: ViewMode) => void;
+  /** "assistant" = agent-first chat UI; "console" = conventional admin UI. */
+  mode: AppMode;
+  setMode: (m: AppMode) => void;
   /** Show an approve/deny card before the agent runs any mutating tool. */
   requireConfirmation: boolean;
   setRequireConfirmation: (v: boolean) => void;
@@ -22,37 +23,32 @@ const SettingsContext = createContext<Settings | null>(null);
 
 const KEY = "cpv.settings";
 
-function load(): { view: ViewMode; requireConfirmation: boolean } {
+function load(): { mode: AppMode; requireConfirmation: boolean } {
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) ?? "{}");
     return {
-      view: raw.view === "admin" ? "admin" : "chat",
+      mode: raw.mode === "console" ? "console" : "assistant",
       requireConfirmation: raw.requireConfirmation !== false,
     };
   } catch {
-    return { view: "chat", requireConfirmation: true };
+    return { mode: "assistant", requireConfirmation: true };
   }
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const initial = load();
-  const [view, setView] = useState<ViewMode>(initial.view);
+  const [mode, setMode] = useState<AppMode>(initial.mode);
   const [requireConfirmation, setRequireConfirmation] = useState(
     initial.requireConfirmation,
   );
 
   useEffect(() => {
-    localStorage.setItem(KEY, JSON.stringify({ view, requireConfirmation }));
-  }, [view, requireConfirmation]);
+    localStorage.setItem(KEY, JSON.stringify({ mode, requireConfirmation }));
+  }, [mode, requireConfirmation]);
 
   const value = useMemo<Settings>(
-    () => ({
-      view,
-      setView,
-      requireConfirmation,
-      setRequireConfirmation,
-    }),
-    [view, requireConfirmation],
+    () => ({ mode, setMode, requireConfirmation, setRequireConfirmation }),
+    [mode, requireConfirmation],
   );
 
   return (

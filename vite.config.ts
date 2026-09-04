@@ -1,3 +1,4 @@
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 
@@ -15,7 +16,7 @@ export default defineConfig(({ mode }) => {
   const token = env.SQUARE_ACCESS_TOKEN?.trim()
 
   return {
-    plugins: [react()],
+    plugins: [react(), tailwindcss()],
     server: {
       proxy: {
         // Browser calls `/api/square/v2/...`; the dev server rewrites to the

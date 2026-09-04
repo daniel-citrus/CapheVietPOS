@@ -6,26 +6,44 @@ import type {
 } from "../../domain";
 
 /**
- * Placeholder fixtures for P1. These are hand-authored in the shape of the
- * internal domain model. They will be replaced by output from
- * scripts/export-square-catalog.mjs (real catalog + locations pulled once from
- * Square). Orders/customers are NOT part of fixtures by design.
+ * Fixtures for P1.
+ *
+ * If scripts/export-square-catalog.mjs has been run, `fixtures.generated.json`
+ * exists and is used (real catalog + locations pulled once from Square).
+ * Otherwise the hand-authored placeholder below is used. Orders/customers are
+ * NOT part of fixtures by design.
  */
 
 const usd = (amount: number) => ({ amount, currency: "USD" });
 
-export const locations: Location[] = [
+interface GeneratedFixtures {
+  locations: Location[];
+  categories: Category[];
+  modifierGroups: ModifierGroup[];
+  items: Item[];
+}
+
+const generatedModules = import.meta.glob<{ default: GeneratedFixtures }>(
+  "./fixtures.generated.json",
+  { eager: true },
+);
+const generated: GeneratedFixtures | undefined =
+  Object.values(generatedModules)[0]?.default;
+
+export const fromSquareExport = Boolean(generated);
+
+const placeholderLocations: Location[] = [
   { id: "LOC-1", name: "Cà phê Việt — Main", status: "active" },
 ];
 
-export const categories: Category[] = [
+const placeholderCategories: Category[] = [
   { id: "CAT-coffee", name: "Cà phê" },
   { id: "CAT-tea", name: "Trà" },
   { id: "CAT-blended", name: "Đá xay" },
   { id: "CAT-pastry", name: "Bánh" },
 ];
 
-export const modifierGroups: ModifierGroup[] = [
+const placeholderModifierGroups: ModifierGroup[] = [
   {
     id: "MG-sugar",
     name: "Mức đường (Sugar level)",
@@ -66,7 +84,7 @@ export const modifierGroups: ModifierGroup[] = [
   },
 ];
 
-export const items: Item[] = [
+const placeholderItems: Item[] = [
   {
     id: "ITEM-cf-sua-da",
     name: "Cà phê sữa đá",
@@ -149,3 +167,9 @@ export const items: Item[] = [
     ],
   },
 ];
+
+export const locations: Location[] = generated?.locations ?? placeholderLocations;
+export const categories: Category[] = generated?.categories ?? placeholderCategories;
+export const modifierGroups: ModifierGroup[] =
+  generated?.modifierGroups ?? placeholderModifierGroups;
+export const items: Item[] = generated?.items ?? placeholderItems;

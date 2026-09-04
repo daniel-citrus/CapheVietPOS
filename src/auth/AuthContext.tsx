@@ -40,8 +40,20 @@ interface AuthValue {
 
 const AuthContext = createContext<AuthValue | null>(null);
 
+const ROLE_KEY = "cvp.devRole";
+
+function initialRole(): Role {
+  const stored = sessionStorage.getItem(ROLE_KEY);
+  return stored === "staff" || stored === "admin" ? stored : "admin";
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<Role>("admin");
+  const [role, setRoleState] = useState<Role>(initialRole);
+
+  const setRole = useCallback((next: Role) => {
+    sessionStorage.setItem(ROLE_KEY, next);
+    setRoleState(next);
+  }, []);
 
   const can = useCallback(
     (capability: Capability) => CAPABILITIES[role].includes(capability),
@@ -50,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthValue>(
     () => ({ user: USERS[role], role, setRole, can }),
-    [role, can],
+    [role, setRole, can],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
