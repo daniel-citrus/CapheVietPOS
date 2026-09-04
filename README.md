@@ -72,6 +72,8 @@ The agent adds no backend of its own — its tools call the same repository the
 console uses. Swapping `MockCatalogRepository` for `SquareCatalogRepository` is
 env-driven in `RepositoryContext.tsx`.
 
+See **`ARCHITECTURE.md`** for the layer / request-flow / phase diagrams.
+
 ## Notes
 
 - Visual language is matched to the **Phin POS** kiosk: warm cream ground,
