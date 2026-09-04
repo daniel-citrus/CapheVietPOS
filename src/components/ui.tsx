@@ -6,19 +6,20 @@ import type {
   TextareaHTMLAttributes,
 } from "react";
 
-/** Hand-rolled primitives. Adopt a component kit later only if this gets painful. */
+/**
+ * Console primitives. Visual language matched to the Phin POS kiosk: flat
+ * surfaces with inset hairline rings (never drop shadows), quick tactile press
+ * feedback, warm palette from index.css tokens.
+ */
 
-type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "jade";
 
-const buttonStyles: Record<ButtonVariant, string> = {
-  primary:
-    "bg-[var(--accent)] text-white hover:opacity-90 disabled:opacity-40",
-  secondary:
-    "bg-white border border-[var(--border)] text-[var(--text)] hover:bg-[var(--bg)] disabled:opacity-40",
-  ghost:
-    "bg-transparent text-[var(--muted)] hover:text-[var(--text)] hover:bg-[var(--bg)] disabled:opacity-40",
-  danger:
-    "bg-transparent border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-40",
+const variantClass: Record<ButtonVariant, string> = {
+  primary: "btn-primary",
+  secondary: "btn-secondary",
+  ghost: "btn-ghost",
+  jade: "btn-jade",
+  danger: "btn--danger",
 };
 
 export function Button({
@@ -28,7 +29,7 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: ButtonVariant }) {
   return (
     <button
-      className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition ${buttonStyles[variant]} ${className}`}
+      className={`${variantClass[variant]} btn-sm ${className}`}
       {...props}
     />
   );
@@ -43,7 +44,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`rounded-lg border border-[var(--border)] bg-[var(--surface)] ${className}`}
+      className={`rounded-[var(--radius)] bg-[var(--color-surface)] shadow-[inset_0_0_0_1px_var(--color-border)] ${className}`}
     >
       {children}
     </div>
@@ -60,11 +61,13 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex items-start justify-between gap-4">
+    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold">{title}</h1>
+        <h1 className="font-serif text-2xl">{title}</h1>
         {subtitle && (
-          <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">{subtitle}</p>
+          <p className="mt-1 max-w-2xl text-sm text-[var(--color-text-muted)]">
+            {subtitle}
+          </p>
         )}
       </div>
       {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
@@ -85,31 +88,41 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium">{label}</span>
+      <span className="mb-1.5 block text-xs font-semibold tracking-wide text-[var(--color-text-muted)]">
+        {label}
+      </span>
       {children}
       {hint && !error && (
-        <span className="mt-1 block text-xs text-[var(--muted)]">{hint}</span>
+        <span className="mt-1 block text-xs text-[var(--color-text-muted)]">
+          {hint}
+        </span>
       )}
-      {error && <span className="mt-1 block text-xs text-red-600">{error}</span>}
+      {error && (
+        <span className="mt-1 block text-xs text-[var(--color-error)]">
+          {error}
+        </span>
+      )}
     </label>
   );
 }
 
-const inputBase =
-  "w-full rounded-md border border-[var(--border)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--accent)] disabled:opacity-50";
+const fieldBase =
+  "w-full rounded-[var(--radius)] bg-[var(--color-surface)] px-3 py-2 text-sm outline-none shadow-[inset_0_0_0_1px_var(--color-border)] transition-shadow focus:shadow-[inset_0_0_0_2px_var(--color-primary)] disabled:opacity-60";
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...props} className={`${inputBase} ${props.className ?? ""}`} />;
+  return <input {...props} className={`${fieldBase} ${props.className ?? ""}`} />;
 }
 
 export function TextArea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
-    <textarea {...props} className={`${inputBase} ${props.className ?? ""}`} />
+    <textarea {...props} className={`${fieldBase} ${props.className ?? ""}`} />
   );
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={`${inputBase} ${props.className ?? ""}`} />;
+  return (
+    <select {...props} className={`${fieldBase} ${props.className ?? ""}`} />
+  );
 }
 
 export function Badge({
@@ -120,13 +133,16 @@ export function Badge({
   tone?: "neutral" | "green" | "amber";
 }) {
   const tones = {
-    neutral: "bg-[var(--bg)] text-[var(--muted)]",
-    green: "bg-green-100 text-green-800",
-    amber: "bg-amber-100 text-amber-800",
+    neutral:
+      "bg-[var(--clay)] text-[var(--color-text-muted)] shadow-[inset_0_0_0_1px_var(--color-border)]",
+    green:
+      "bg-[color-mix(in_srgb,var(--color-success)_16%,transparent)] text-[var(--color-success)]",
+    amber:
+      "bg-[color-mix(in_srgb,var(--color-accent)_18%,transparent)] text-[color-mix(in_srgb,var(--color-accent)_70%,var(--color-text))]",
   };
   return (
     <span
-      className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${tones[tone]}`}
+      className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${tones[tone]}`}
     >
       {children}
     </span>
@@ -135,8 +151,8 @@ export function Badge({
 
 export function Spinner({ label }: { label?: string }) {
   return (
-    <div className="flex items-center gap-2 py-8 text-sm text-[var(--muted)]">
-      <span className="h-3 w-3 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)]" />
+    <div className="flex items-center gap-2 py-8 text-sm text-[var(--color-text-muted)]">
+      <span className="h-4 w-4 animate-spin rounded-full border-2 border-[color-mix(in_srgb,var(--color-text)_15%,transparent)] border-t-[var(--color-primary)]" />
       {label}
     </div>
   );
@@ -151,9 +167,11 @@ export function EmptyState({
 }) {
   return (
     <Card className="p-10 text-center">
-      <p className="font-medium">{title}</p>
+      <p className="font-serif text-lg">{title}</p>
       {body && (
-        <p className="mx-auto mt-2 max-w-md text-sm text-[var(--muted)]">{body}</p>
+        <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-text-muted)]">
+          {body}
+        </p>
       )}
     </Card>
   );
@@ -168,7 +186,7 @@ export function ErrorState({
 }) {
   return (
     <Card className="p-8 text-center">
-      <p className="text-sm text-red-700">{message}</p>
+      <p className="text-sm text-[var(--color-error)]">{message}</p>
       {onRetry && (
         <div className="mt-3">
           <Button onClick={onRetry}>Retry</Button>

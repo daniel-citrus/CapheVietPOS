@@ -74,6 +74,11 @@ env-driven in `RepositoryContext.tsx`.
 
 ## Notes
 
+- Visual language is matched to the **Phin POS** kiosk: warm cream ground,
+  lacquer-maroon primary, brass accent, sage for confirm actions; flat surfaces
+  with inset hairline rings (no drop shadows); Lora display / Be Vietnam Pro
+  interface (loaded from Google Fonts); quick tactile press feedback;
+  `prefers-reduced-motion` respected. Tokens live at the top of `src/index.css`.
 - Mock writes are in-memory; a refresh reverts to fixtures.
 - Light theme only for now, so the two surfaces stay visually coherent.
 - `DOMAIN.md` is the catalog model (a faithful projection of Square's Catalog API).

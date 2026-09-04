@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { ModeToggle } from "../../components/ModeToggle";
+import { PhinMark } from "../../components/PhinMark";
 import { hasAnthropicKey } from "../../config/env";
 import { useRepositories } from "../../repositories/RepositoryContext";
 import { useSettings } from "../../settings/SettingsContext";
@@ -77,7 +78,9 @@ export function AssistantView() {
     <div className="app">
       <header className="app-header">
         <span className="app-brand">
-          <span className="mark">c</span>
+          <span className="mark">
+            <PhinMark />
+          </span>
           Cà phê Việt
         </span>
         <span className="spacer" />
@@ -92,13 +95,7 @@ export function AssistantView() {
         {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       </header>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          padding: "10px 14px 0",
-        }}
-      >
+      <div className="app-modebar">
         <ModeToggle />
       </div>
 
