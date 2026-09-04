@@ -78,7 +78,7 @@ const HELP = `I can, without an API key:
 • "archive <item>" / "restore <item>"
 • "create category <name>"
 
-Add VITE_ANTHROPIC_API_KEY to .env.local for full conversational control.`;
+Add ANTHROPIC_API_KEY to .env.local (server-side only) for full conversational control.`;
 
 export class OfflineAgent implements Agent {
   readonly kind = "offline" as const;

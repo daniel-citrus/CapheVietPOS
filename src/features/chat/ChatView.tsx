@@ -4,7 +4,6 @@ import {
   type ChatEntry,
   type PendingConfirmation,
 } from "../../agent/useAgent";
-import { hasAnthropicKey } from "../../config/env";
 
 const SUGGESTIONS = [
   "Show me the menu",
@@ -111,7 +110,7 @@ export function ChatView() {
             <p>
               {agentKind === "claude"
                 ? "Add items, change prices, move categories, archive — in plain language. You approve every change."
-                : "No API key set — I understand a few direct commands. Add VITE_ANTHROPIC_API_KEY for the full assistant."}
+                : "No API key configured — I understand a few direct commands. Add ANTHROPIC_API_KEY to .env.local (server-side) for the full assistant."}
             </p>
             {!canWrite && (
               <p style={{ marginTop: "0.6rem", color: "var(--color-error)" }}>
@@ -163,7 +162,7 @@ export function ChatView() {
           value={draft}
           rows={1}
           placeholder={
-            hasAnthropicKey ? "Message the assistant…" : "Try: show the menu"
+            agentKind === "claude" ? "Message the assistant…" : "Try: show the menu"
           }
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {

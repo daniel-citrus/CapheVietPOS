@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { ModeToggle } from "../../components/ModeToggle";
 import { PhinMark } from "../../components/PhinMark";
-import { hasAnthropicKey } from "../../config/env";
+import { useAnthropicAvailability } from "../../config/agentAvailability";
 import { useRepositories } from "../../repositories/RepositoryContext";
 import { useSettings } from "../../settings/SettingsContext";
 import { ChatView } from "../chat/ChatView";
@@ -24,6 +24,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { role, setRole } = useAuth();
   const { requireConfirmation, setRequireConfirmation } = useSettings();
   const { source } = useRepositories();
+  const availability = useAnthropicAvailability();
 
   return (
     <>
@@ -59,12 +60,18 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <div className="settings-row">
           <span>Agent</span>
           <span style={{ color: "var(--muted)" }}>
-            {hasAnthropicKey ? "Claude" : "Offline parser"}
+            {availability === "checking"
+              ? "Checking…"
+              : availability === "available"
+                ? "Claude"
+                : "Offline parser"}
           </span>
         </div>
         <p style={{ marginTop: 10, fontSize: "0.75rem", color: "var(--muted)" }}>
-          Set <code>VITE_DATA_SOURCE</code>, <code>SQUARE_ACCESS_TOKEN</code> and{" "}
-          <code>VITE_ANTHROPIC_API_KEY</code> in <code>.env.local</code>.
+          Set <code>VITE_DATA_SOURCE</code> here, and{" "}
+          <code>SQUARE_ACCESS_TOKEN</code> / <code>ANTHROPIC_API_KEY</code> in{" "}
+          <code>.env.local</code> — both are read server-side only, never
+          bundled into the browser.
         </p>
       </div>
     </>

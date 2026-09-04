@@ -5,7 +5,7 @@ Square. It has **two surfaces behind one toggle** (top-right of every screen):
 
 | Mode | What it is |
 |---|---|
-| **Assistant** (default) | Agent-first chat. You tell it what to do to the menu — "raise all cà phê sữa đá prices by 25¢", "add a large bạc xỉu at $5.50", "archive chè ba màu" — and approve each change on an **Apply / Skip** card. With `VITE_ANTHROPIC_API_KEY` it's Claude with tool use; without a key it falls back to a small offline command parser. |
+| **Assistant** (default) | Agent-first chat. You tell it what to do to the menu — "raise all cà phê sữa đá prices by 25¢", "add a large bạc xỉu at $5.50", "archive chè ba màu" — and approve each change on an **Apply / Skip** card. With `ANTHROPIC_API_KEY` set (server-side) it's Claude with tool use; without it, it falls back to a small offline command parser. |
 | **Console** | The conventional admin console: Items (list / detail / create), Categories, Modifier groups, Pricing, and navigable Reporting / Analytics / Order-history scaffolds. Sidebar nav, role-gated edit actions. |
 
 Both surfaces run against the same `CatalogRepository`, so a change made in one
@@ -27,15 +27,34 @@ Defaults to `VITE_DATA_SOURCE=mock` (in-memory fixtures, no token needed).
 | `SQUARE_ACCESS_TOKEN` | Square access token. **Read only by the Vite dev server** (`vite.config.ts`) and injected into `/api/square/*` requests — never bundled into the browser, never `VITE_`-prefixed. |
 | `SQUARE_ENVIRONMENT` | `sandbox` or `production` — picks the Square host. |
 | `SQUARE_LOCATION_ID` | Optional. Pin a single location. |
-| `VITE_ANTHROPIC_API_KEY` | Optional. Enables the Claude-powered assistant. Without it, chat uses the offline parser. |
-| `VITE_AGENT_MODEL` | Agent model id (default `claude-sonnet-5`). |
+| `ANTHROPIC_API_KEY` | Optional. Anthropic API key. **Read only by the Vite dev server** and injected into `/api/anthropic/*` requests — never bundled into the browser, never `VITE_`-prefixed. Enables the Claude-powered assistant; without it, chat uses the offline parser. |
+| `VITE_AGENT_MODEL` | Agent model id (default `claude-sonnet-5`). Not a secret — safe to bundle. |
 
-### How the Square token stays server-side
+### Keys stay server-side only
 
-The browser calls `/api/square/v2/...`. `vite.config.ts` proxies that to
-`connect.squareup(sandbox).com`, adding `Authorization: Bearer <SQUARE_ACCESS_TOKEN>`
-in the dev-server process. Moving to production means replacing that proxy with a
-real backend function — the app code does not change.
+Both external calls go through the Vite dev server, never straight from the
+browser:
+
+- **Square:** the browser calls `/api/square/v2/...`; `vite.config.ts` proxies
+  that to `connect.squareup(sandbox).com`, adding
+  `Authorization: Bearer <SQUARE_ACCESS_TOKEN>` in the dev-server process.
+- **Anthropic:** the browser calls `/api/anthropic/v1/...` with **no** auth
+  header at all (`ClaudeAgent` constructs the SDK with
+  `defaultHeaders: { "X-Api-Key": null }`, which tells the SDK the header is
+  intentionally omitted rather than missing); the proxy adds
+  `x-api-key: <ANTHROPIC_API_KEY>` before forwarding to `api.anthropic.com`.
+  Streaming responses pass through untouched. A tiny `/api/anthropic-status`
+  endpoint lets the client ask "is a key configured?" — it returns a boolean,
+  never the key — so the UI can decide Claude vs. the offline parser without
+  ever holding a secret.
+
+Neither key is declared in `src/vite-env.d.ts`, so referencing
+`import.meta.env.ANTHROPIC_API_KEY` (or the Square token) from client code is a
+type error, not just a convention.
+
+Moving to production means replacing these dev-server proxies with a real
+backend (serverless function or otherwise) that does the same header
+injection — the app code does not change.
 
 ### Freezing a real menu as fixtures (optional)
 
@@ -48,7 +67,8 @@ automatically. Orders and customers are never pulled.
 
 ```
 src/
-  config/env.ts               browser-visible config (no secrets)
+  config/env.ts                browser-visible config (no secrets)
+  config/agentAvailability.ts  asks /api/anthropic-status; never sees the key itself
   settings/SettingsContext    persists the Assistant/Console mode + confirm toggle
   repositories/
     CatalogRepository.ts       the interface both surfaces talk to

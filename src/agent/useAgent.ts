@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { hasAnthropicKey } from "../config/env";
+import { useAnthropicAvailability } from "../config/agentAvailability";
 import { useAuth } from "../auth/AuthContext";
 import { useCatalog } from "../repositories/RepositoryContext";
 import { bumpCatalogRevision } from "../repositories/catalogRevision";
@@ -33,9 +33,14 @@ export function useAgent() {
   const { requireConfirmation } = useSettings();
   const canWrite = can("catalog.write");
 
+  // "checking" behaves as offline until the server confirms a key is
+  // configured — the client never has enough information to know on its own
+  // (that's the point: the key isn't in the bundle).
+  const availability = useAnthropicAvailability();
   const agent = useMemo(
-    () => (hasAnthropicKey ? new ClaudeAgent(catalog) : new OfflineAgent(catalog)),
-    [catalog],
+    () =>
+      availability === "available" ? new ClaudeAgent(catalog) : new OfflineAgent(catalog),
+    [catalog, availability],
   );
 
   const [entries, setEntries] = useState<ChatEntry[]>([]);

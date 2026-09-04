@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { agentModel, anthropicApiKey } from "../config/env";
+import { agentModel, anthropicApiBase } from "../config/env";
 import type { CatalogRepository } from "../repositories/CatalogRepository";
 import { CatalogToolbox, toolByName, toolSpecs } from "./catalogTools";
 import type { Agent, AgentTurn, ToolCall } from "./types";
@@ -26,8 +26,14 @@ export class ClaudeAgent implements Agent {
 
   constructor(repo: CatalogRepository) {
     this.client = new Anthropic({
-      apiKey: anthropicApiKey,
+      // No key here — ever. Requests go to our own origin (/api/anthropic),
+      // which the Vite dev server proxies to Anthropic, injecting the real
+      // `x-api-key` server-side (see vite.config.ts). `X-Api-Key: null`
+      // tells the SDK the header is intentionally omitted, so it doesn't
+      // throw "missing API key" for having none to send.
+      baseURL: anthropicApiBase,
       dangerouslyAllowBrowser: true,
+      defaultHeaders: { "X-Api-Key": null },
     });
     this.toolbox = new CatalogToolbox(repo);
   }
