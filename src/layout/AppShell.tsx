@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import type { Role } from "../domain";
+import type { Role } from "shared/domain";
 import { useAuth, type Capability } from "../auth/AuthContext";
 import { PhinMark } from "../components/PhinMark";
 import { useCurrentLocation } from "../location/LocationContext";
-import { useRepositories } from "../repositories/RepositoryContext";
+import { useMeta } from "../meta/MetaContext";
 import { t, type CopyKey } from "../i18n/copy";
 
 const NAV: { to: string; key: CopyKey; requires?: Capability }[] = [
@@ -12,6 +12,7 @@ const NAV: { to: string; key: CopyKey; requires?: Capability }[] = [
   { to: "/categories", key: "nav.categories" },
   { to: "/modifier-groups", key: "nav.modifierGroups" },
   { to: "/pricing", key: "nav.pricing", requires: "pricing.read" },
+  { to: "/activity", key: "nav.activity" },
   { to: "/reporting", key: "nav.reporting" },
   { to: "/analytics", key: "nav.analytics" },
   { to: "/orders", key: "nav.orders" },
@@ -27,7 +28,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 export function AppShell({ modeToggle }: { modeToggle?: ReactNode }) {
   const { role, setRole, user, can } = useAuth();
   const { currentLocation } = useCurrentLocation();
-  const { source } = useRepositories();
+  const { dataSource } = useMeta();
   const nav = NAV.filter((item) => !item.requires || can(item.requires));
 
   const roleSelect = (
@@ -76,9 +77,9 @@ export function AppShell({ modeToggle }: { modeToggle?: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="app-header justify-between md:px-6">
-          <span className={`badge ${source === "square" ? "badge--live" : "badge--mock"}`}>
+          <span className={`badge ${dataSource === "square" ? "badge--live" : "badge--mock"}`}>
             <span className="dot" />
-            {source === "square" ? "Square · live" : "Demo data"}
+            {dataSource === "square" ? "Square · live" : "Demo data"}
           </span>
           <div className="flex items-center gap-2.5">
             <span className="md:hidden">{roleSelect}</span>

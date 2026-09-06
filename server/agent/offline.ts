@@ -1,11 +1,10 @@
-import type { CatalogRepository } from "../repositories/CatalogRepository";
-import { CatalogToolbox, toolByName } from "./catalogTools";
-import type { Agent, AgentTurn, ToolCall } from "./types";
+import type { ToolCall } from "shared/api";
+import { toolByName } from "./catalogTools";
+import { handleToolCall, type AgentRun } from "./run";
 
 /**
- * Fallback agent when no Anthropic API key is configured. It recognises a
- * handful of common phrasings and drives the same toolbox the Claude agent
- * uses. Not conversational — deliberately narrow and predictable.
+ * Fallback when no ANTHROPIC_API_KEY: recognise ~9 common phrasings, run one
+ * tool through the same path as the Claude loop. Not conversational.
  */
 
 interface Rule {
@@ -41,7 +40,6 @@ const rules: Rule[] = [
     build: (m) => ({ name: "unarchive_item", args: { item: m[1] } }),
   },
   {
-    // "set price of Cà phê sữa đá L to $5" / "change Bạc xỉu price to 4.75"
     test: new RegExp(
       String.raw`(?:set|change|update|make)\s+(?:the\s+)?(?:price\s+(?:of|for)\s+)?(.+?)\s+(?:price\s+)?(?:to|=|at)\s+${pricePattern}`,
       "i",
@@ -54,10 +52,7 @@ const rules: Rule[] = [
         variation = sizeMatch[1];
         item = item.slice(0, sizeMatch.index).trim();
       }
-      return {
-        name: "set_price",
-        args: { item, variation, price_usd: Number(m[2]) },
-      };
+      return { name: "set_price", args: { item, variation, price_usd: Number(m[2]) } };
     },
   },
   {
@@ -78,57 +73,30 @@ const HELP = `I can, without an API key:
 • "archive <item>" / "restore <item>"
 • "create category <name>"
 
-Add ANTHROPIC_API_KEY to .env.local (server-side only) for full conversational control.`;
+Set ANTHROPIC_API_KEY in the backend's .env.local for the full assistant.`;
 
-export class OfflineAgent implements Agent {
-  readonly kind = "offline" as const;
-  private toolbox: CatalogToolbox;
+export async function runOffline(userText: string, run: AgentRun): Promise<void> {
+  const matched = rules
+    .map((r) => {
+      const m = userText.match(r.test);
+      return m ? r.build(m) : null;
+    })
+    .find(Boolean);
 
-  constructor(repo: CatalogRepository) {
-    this.toolbox = new CatalogToolbox(repo);
+  if (!matched || matched.name === "__help") {
+    run.emit({ type: "text", text: HELP });
+    return;
   }
 
-  reset() {}
+  const spec = toolByName.get(matched.name);
+  const call: ToolCall = {
+    id: crypto.randomUUID(),
+    name: matched.name,
+    args: matched.args,
+    mutates: spec?.mutates ?? false,
+  };
 
-  async send(userText: string, turn: AgentTurn): Promise<void> {
-    const matched = rules
-      .map((r) => {
-        const m = userText.match(r.test);
-        return m ? r.build(m) : null;
-      })
-      .find(Boolean);
-
-    if (!matched || matched.name === "__help") {
-      turn.emit({ type: "text", text: HELP });
-      return;
-    }
-
-    const spec = toolByName.get(matched.name);
-    const call: ToolCall = {
-      id: crypto.randomUUID(),
-      name: matched.name,
-      args: matched.args,
-      mutates: spec?.mutates ?? false,
-    };
-    turn.emit({ type: "tool_call", call });
-
-    if (call.mutates) {
-      const approved = await turn.confirm(call);
-      if (!approved) {
-        turn.emit({
-          type: "tool_result",
-          call,
-          result: { ok: false, summary: "You declined this change." },
-        });
-        return;
-      }
-    }
-
-    const result = await this.toolbox.run(call.name, call.args);
-    turn.emit({ type: "tool_result", call, result });
-    turn.emit({
-      type: "text",
-      text: result.ok ? "Done." : `That didn't work. ${result.summary}`,
-    });
-  }
+  const outcome = await handleToolCall(run, call);
+  // On success add a closing line; on failure the tool_result already explains.
+  if (!outcome.isError) run.emit({ type: "text", text: "Done." });
 }

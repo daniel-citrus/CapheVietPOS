@@ -1,4 +1,4 @@
-import { formatMoney } from "../../domain";
+import { formatMoney } from "shared/domain";
 import { useRepositories } from "../../repositories/RepositoryContext";
 import { useAsync } from "../../lib/useAsync";
 import {
@@ -9,7 +9,7 @@ import {
   Spinner,
 } from "../../components/ui";
 import { t } from "../../i18n/copy";
-import type { ModifierGroup } from "../../domain";
+import type { ModifierGroup } from "shared/domain";
 
 function ruleLabel(g: ModifierGroup): string {
   if (g.maxSelect <= 1) return t("modifierGroups.rule.single");

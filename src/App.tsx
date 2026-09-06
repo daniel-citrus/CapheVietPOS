@@ -4,6 +4,7 @@ import { ModeToggle } from "./components/ModeToggle";
 import { AssistantView } from "./features/assistant/AssistantView";
 import { AppShell } from "./layout/AppShell";
 import { LocationProvider } from "./location/LocationContext";
+import { MetaProvider } from "./meta/MetaContext";
 import { RepositoryProvider } from "./repositories/RepositoryContext";
 import { CategoriesPage } from "./routes/catalog/CategoriesPage";
 import { ItemCreatePage } from "./routes/catalog/ItemCreatePage";
@@ -11,6 +12,7 @@ import { ItemDetailPage } from "./routes/catalog/ItemDetailPage";
 import { ItemsListPage } from "./routes/catalog/ItemsListPage";
 import { ModifierGroupsPage } from "./routes/catalog/ModifierGroupsPage";
 import { NotFoundPage } from "./routes/NotFoundPage";
+import { ActivityPage } from "./routes/reports/ActivityPage";
 import { AnalyticsPage } from "./routes/reports/AnalyticsPage";
 import { OrderHistoryPage } from "./routes/reports/OrderHistoryPage";
 import { ReportingPage } from "./routes/reports/ReportingPage";
@@ -30,6 +32,7 @@ function ConsoleApp() {
             <Route path="categories" element={<CategoriesPage />} />
             <Route path="modifier-groups" element={<ModifierGroupsPage />} />
             <Route path="pricing" element={<PricingPage />} />
+            <Route path="activity" element={<ActivityPage />} />
             <Route path="reporting" element={<ReportingPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="orders" element={<OrderHistoryPage />} />
@@ -50,9 +53,11 @@ export default function App() {
   return (
     <RepositoryProvider>
       <AuthProvider>
-        <SettingsProvider>
-          <Surface />
-        </SettingsProvider>
+        <MetaProvider>
+          <SettingsProvider>
+            <Surface />
+          </SettingsProvider>
+        </MetaProvider>
       </AuthProvider>
     </RepositoryProvider>
   );

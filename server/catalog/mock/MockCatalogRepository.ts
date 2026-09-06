@@ -5,15 +5,15 @@ import type {
   ModifierGroup,
   Money,
   Variation,
-} from "../../domain";
+} from "shared/domain";
 import type {
   CatalogRepository,
   CreateItemInput,
   CreateVariationInput,
   UpdateItemPatch,
   UpdateVariationPatch,
-} from "../CatalogRepository";
-import { NotFoundError, ValidationError } from "../errors";
+} from "shared/CatalogRepository";
+import { NotFoundError, ValidationError } from "shared/errors";
 import * as fixtures from "./fixtures";
 
 /** Simulated network latency so the UI exercises real loading states. */

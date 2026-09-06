@@ -1,7 +1,10 @@
-import type { Item } from "../domain";
-import { formatMoney, parseMoney } from "../domain";
-import type { CatalogRepository } from "../repositories/CatalogRepository";
-import { RepositoryError } from "../repositories/errors";
+import type { ToolResult } from "shared/api";
+import type { Item } from "shared/domain";
+import { formatMoney, parseMoney } from "shared/domain";
+import { RepositoryError } from "shared/errors";
+import type { CatalogRepository } from "shared/CatalogRepository";
+
+export type { ToolResult };
 
 /**
  * The agent's tool surface. Each tool maps to one or a few CatalogRepository
@@ -181,14 +184,6 @@ export const toolSpecs: ToolSpec[] = [
 ];
 
 export const toolByName = new Map(toolSpecs.map((t) => [t.name, t]));
-
-export interface ToolResult {
-  ok: boolean;
-  /** Human-readable summary shown in the chat transcript. */
-  summary: string;
-  /** Structured payload handed back to the model. */
-  data?: unknown;
-}
 
 type Args = Record<string, unknown>;
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { formatMoney, parseMoney } from "../../domain";
-import type { Item } from "../../domain";
+import { formatMoney, parseMoney } from "shared/domain";
+import type { Item } from "shared/domain";
 import { useAuth } from "../../auth/AuthContext";
 import { useRepositories } from "../../repositories/RepositoryContext";
 import { useAsync } from "../../lib/useAsync";
