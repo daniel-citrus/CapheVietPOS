@@ -1,4 +1,4 @@
-import type { Order, SalesRepository, SalesSummary } from "../SalesRepository";
+import type { Order, SalesRepository, SalesSummary } from "shared/SalesRepository";
 
 /**
  * P1 stub. No order or customer data is pulled from Square in P1, so everything

@@ -1,36 +1,25 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { dataSource, type DataSource } from "../config/env";
-import type { CatalogRepository } from "./CatalogRepository";
-import type { SalesRepository } from "./SalesRepository";
-import { MockCatalogRepository } from "./mock/MockCatalogRepository";
-import { MockSalesRepository } from "./mock/MockSalesRepository";
-import { SquareCatalogRepository } from "./square/SquareCatalogRepository";
+import type { CatalogRepository } from "shared/CatalogRepository";
+import type { SalesRepository } from "shared/SalesRepository";
+import { HttpCatalogRepository } from "./HttpCatalogRepository";
+import { HttpSalesRepository } from "./HttpSalesRepository";
 
 export interface Repositories {
   catalog: CatalogRepository;
   sales: SalesRepository;
-  /** Where `catalog` reads/writes: "mock" fixtures or the live "square" proxy. */
-  source: DataSource;
 }
 
 const RepositoryContext = createContext<Repositories | null>(null);
 
 /**
- * Wires the data layer. `VITE_DATA_SOURCE=square` points the catalog at the
- * live Square proxy (see vite.config.ts); anything else uses in-memory mock
- * fixtures. Sales stays mock for now (no order data is pulled — see PLAN.md).
- * In P2 swap these constructors for the real HTTP implementations with no
- * component changes.
+ * Both surfaces talk to the backend through these. Mock vs Square is a
+ * server-side choice now (`DATA_SOURCE`); the client is identical either way.
  */
 export function RepositoryProvider({ children }: { children: ReactNode }) {
   const repositories = useMemo<Repositories>(
     () => ({
-      source: dataSource,
-      catalog:
-        dataSource === "square"
-          ? new SquareCatalogRepository()
-          : new MockCatalogRepository(),
-      sales: new MockSalesRepository(),
+      catalog: new HttpCatalogRepository(),
+      sales: new HttpSalesRepository(),
     }),
     [],
   );

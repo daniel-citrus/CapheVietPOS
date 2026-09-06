@@ -2,34 +2,28 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-import type { CurrentUser, Role } from "../domain";
+import {
+  can as canFor,
+  roleFromHeader,
+  userForRole,
+  type Capability,
+  type CurrentUser,
+  type Role,
+} from "shared/domain";
+import { setRoleHeader } from "../repositories/apiClient";
+
+export type { Capability };
 
 /**
- * P1 auth is stubbed. There is no real identity and no security — the role is a
- * value in context that the dev "View as" switcher flips, so we can build and
- * demo permission-gated UI. In P3 this is replaced by real auth (Square OAuth or
- * Clerk); the `can()` helper and call sites stay the same.
+ * Auth is stubbed. The role is a value in context that the "View as" switcher
+ * flips; it's also pushed into `apiClient` so every `/api/*` request carries an
+ * `X-Role` header the server enforces. Real auth replaces the internals later.
  */
-
-const USERS: Record<Role, CurrentUser> = {
-  admin: { id: "u-admin", name: "Admin (demo)", role: "admin" },
-  staff: { id: "u-staff", name: "Staff (demo)", role: "staff" },
-};
-
-/** Capabilities keyed by a short action name. Extend as screens are added. */
-export type Capability =
-  | "catalog.write"
-  | "pricing.read"
-  | "pricing.write";
-
-const CAPABILITIES: Record<Role, Capability[]> = {
-  admin: ["catalog.write", "pricing.read", "pricing.write"],
-  staff: [],
-};
 
 interface AuthValue {
   user: CurrentUser;
@@ -43,25 +37,29 @@ const AuthContext = createContext<AuthValue | null>(null);
 const ROLE_KEY = "cvp.devRole";
 
 function initialRole(): Role {
-  const stored = sessionStorage.getItem(ROLE_KEY);
-  return stored === "staff" || stored === "admin" ? stored : "admin";
+  return roleFromHeader(sessionStorage.getItem(ROLE_KEY));
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<Role>(initialRole);
 
+  useEffect(() => {
+    setRoleHeader(role);
+  }, [role]);
+
   const setRole = useCallback((next: Role) => {
     sessionStorage.setItem(ROLE_KEY, next);
+    setRoleHeader(next);
     setRoleState(next);
   }, []);
 
   const can = useCallback(
-    (capability: Capability) => CAPABILITIES[role].includes(capability),
+    (capability: Capability) => canFor(role, capability),
     [role],
   );
 
   const value = useMemo<AuthValue>(
-    () => ({ user: USERS[role], role, setRole, can }),
+    () => ({ user: userForRole(role), role, setRole, can }),
     [role, setRole, can],
   );
 

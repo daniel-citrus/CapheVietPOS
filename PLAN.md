@@ -2,6 +2,14 @@
 
 _Last updated: 2026-09-03. Product: back-office admin console for a US-based, Vietnamese-branded coffee business. Square is the system of record._
 
+> **Status note (2026-09-06):** this plan has been overtaken by events. The app
+> now has a real **Fastify backend** (`server/`) that owns the catalog
+> repository, the Square integration, the agent tool-loop, permission checks,
+> and a SQLite audit log; the React SPA talks only to `/api/*`. That collapses
+> most of P2 and P3 below. The agent (planned as P4) was built early against the
+> mock/Square repository. See **`ARCHITECTURE.md`** for what actually exists.
+> Still stubbed: real auth (an `X-Role` header stands in), deployment.
+
 ## Product framing
 
 - This is the **back-office admin console** (menu/catalog management, pricing, reporting), **not** the register/cashier screen. The register is a separate future surface.

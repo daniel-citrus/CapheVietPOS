@@ -1,13 +1,6 @@
 /// <reference types="vite/client" />
 
-interface ImportMetaEnv {
-  readonly VITE_DATA_SOURCE?: string;
-  readonly VITE_AGENT_MODEL?: string;
-  // SQUARE_ACCESS_TOKEN and ANTHROPIC_API_KEY are deliberately NOT declared
-  // here — they are read only by vite.config.ts (Node, server-side) and must
-  // never be VITE_-prefixed or referenced from client code.
-}
-
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
+// The frontend has no environment configuration of its own — it only talks to
+// `/api/*`. All config (DATA_SOURCE, the Square token, the Anthropic key) is
+// read server-side by the backend; the client learns what it needs from
+// `GET /api/meta`.

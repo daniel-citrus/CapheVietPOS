@@ -12,7 +12,7 @@
  *        # optional, defaults to production:
  *        SQUARE_API_BASE=https://connect.squareup.com
  *   2. node scripts/export-square-catalog.mjs
- *   3. Commit src/repositories/mock/fixtures.generated.json (it contains no
+ *   3. Commit server/catalog/mock/fixtures.generated.json (it contains no
  *      secrets — just your menu structure). Rotate the token afterwards.
  *
  * Recommended token scopes (read-only): ITEMS_READ, MERCHANT_PROFILE_READ
@@ -22,7 +22,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT = resolve(root, "src/repositories/mock/fixtures.generated.json");
+const OUT = resolve(root, "server/catalog/mock/fixtures.generated.json");
 
 // --- tiny .env.local loader (no dependency) ---------------------------------
 function loadEnvLocal() {

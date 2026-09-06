@@ -5,7 +5,7 @@ import type {
   ModifierOption,
   Money,
   Variation,
-} from "../../domain";
+} from "shared/domain";
 
 /**
  * Anti-corruption layer between Square's CatalogObject shapes and the internal

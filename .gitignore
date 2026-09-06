@@ -27,3 +27,8 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Backend audit database
+server/data/
+
+server-dist/
