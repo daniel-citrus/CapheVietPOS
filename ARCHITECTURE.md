@@ -187,6 +187,11 @@ sidebar, role switcher, data-source badge, the mode toggle). Screens call
 also subscribe to `useCatalogRevision()` so a change made in chat shows up in
 the Console list without a manual refresh (§7.4).
 
+Every Console chrome string goes through `t()` (`src/i18n/copy.ts`) — a single
+English dictionary today; a Vietnamese translation is a second dictionary plus a
+language switch, with no component changes. Catalog content (item names like
+"Cà phê sữa đá") is data, never routed through `t()`.
+
 | Path | Purpose |
 |---|---|
 | `/items` · `/items/new` · `/items/:id` | list / create / detail (name, description, category, image, variations, modifier groups, archive) |
@@ -331,7 +336,7 @@ The capability model lives in `shared/domain/auth.ts` so both ends agree.
 | Persistence of mock writes | none — restart the backend and it reverts to fixtures |
 | Catalog persistence | Square is the source of truth; the backend caches nothing |
 | Reporting / analytics / orders | navigable scaffolds; no order data pulled |
-| Modifier-group editing | read-only in the Console; the agent attaches/detaches but doesn't define groups |
+| Modifier-group editing | read-only in the Console; the agent has no modifier-group tools at all |
 | Item image uploads against Square | reading an existing image works; setting one only works against the mock (Square needs a file upload, not a URL) |
 | Audit log | append-only SQLite (surfaced read-only in the **Activity** tab); no retention policy, no Postgres impl yet |
 | Auth | stubbed `X-Role` header; no real identity |
@@ -412,9 +417,10 @@ src/                             React SPA — talks only to /api/*
   auth/AuthContext.tsx           stub role → sessionStorage + apiClient
   settings/SettingsContext.tsx   mode + requireConfirmation → localStorage
   location/LocationContext.tsx   current location (Console-only)
+  i18n/copy.ts                   t() — the single English dictionary for Console chrome (§6)
   features/assistant/ · features/chat/   the mobile chat shell + transcript
   layout/AppShell.tsx            Console shell
-  routes/                        Console pages: catalog/ · pricing/ · reports/{ActivityPage, scaffolds}
+  routes/                        Console pages: catalog/ · pricing/ · reports/{ActivityPage, scaffolds} · NotFoundPage
   components/                    ModeToggle · ui.tsx · ItemThumbnail · PhinMark
   lib/                           useAsync · placeholderImage
 
