@@ -163,9 +163,11 @@ function ImageSection({
               />
             </Field>
           ) : (
-            !item.imageUrl && (
+            // Admin viewing a Square-backed item: explain why there's no field.
+            // Staff just see the thumbnail — no editing copy to show.
+            writable && !item.imageUrl && (
               <p className="text-sm text-[var(--muted)]">
-                {writable ? t("item.image.squareNotice") : t("item.image.hint")}
+                {t("item.image.squareNotice")}
               </p>
             )
           )}

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { placeholderImage } from "../lib/placeholderImage";
 
 interface ThumbItem {
@@ -18,14 +19,19 @@ export function ItemThumbnail({
   size?: number;
   className?: string;
 }) {
-  const src = item.imageUrl || placeholderImage(item.name, size);
+  // The placeholder does a hash + SVG string build + encodeURIComponent; memo
+  // keeps that off the items-list re-render path (live search filter).
+  const src = useMemo(
+    () => item.imageUrl || placeholderImage(item.name, size),
+    [item.imageUrl, item.name, size],
+  );
   return (
     <img
       src={src}
       alt=""
       width={size}
       height={size}
-      className={`shrink-0 rounded-[var(--radius)] object-cover shadow-[inset_0_0_0_1px_var(--color-border,var(--border))] ${className}`}
+      className={`shrink-0 rounded-[var(--radius)] object-cover shadow-[inset_0_0_0_1px_var(--color-border)] ${className}`}
       style={{ width: size, height: size }}
     />
   );
