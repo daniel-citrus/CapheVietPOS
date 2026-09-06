@@ -65,25 +65,16 @@
 
 * {
   box-sizing: border-box;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-*::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
 }
 
 html,
 body,
 #root {
-  min-height: 100%;
+  height: 100%;
 }
 
 body {
   margin: 0;
-  min-height: 100svh;
   background: var(--color-background);
   color: var(--color-text);
   touch-action: manipulation;
@@ -266,9 +257,13 @@ a {
 .app {
   max-width: 480px;
   margin: 0 auto;
-  min-height: 100svh;
+  /* Fixed viewport height so the transcript (.chat-log) is the scroll
+     container, not the whole page. dvh tracks the mobile browser chrome. */
+  height: 100svh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: var(--color-background);
   box-shadow: inset 1px 0 0 var(--color-border), inset -1px 0 0 var(--color-border);
 }
@@ -336,11 +331,16 @@ a {
   background: color-mix(in srgb, currentColor 16%, transparent);
 }
 
+.app-header,
+.app-modebar {
+  flex-shrink: 0;
+}
+
 .app-main {
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
 
 .app-modebar {
@@ -444,6 +444,7 @@ a {
 
 .chat-log {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 1rem 0.9rem 0.5rem;
@@ -697,8 +698,7 @@ a {
 /* --- Composer ---------------------------------------------- */
 
 .composer {
-  position: sticky;
-  bottom: 0;
+  flex-shrink: 0;
   display: flex;
   gap: 0.5rem;
   align-items: flex-end;
@@ -904,6 +904,11 @@ a {
   overflow-x: auto;
   padding-bottom: 0.15rem;
   touch-action: pan-x;
+  scrollbar-width: none;
+}
+
+.cat-filter::-webkit-scrollbar {
+  display: none;
 }
 
 .chip {
