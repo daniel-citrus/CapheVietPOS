@@ -10,7 +10,6 @@ const en = {
   "app.title": "Cà phê Việt Admin",
   "app.env.mock": "Mock data — changes are not saved",
 
-  "nav.menu": "Menu",
   "nav.items": "Items",
   "nav.categories": "Categories",
   "nav.modifierGroups": "Modifier groups",

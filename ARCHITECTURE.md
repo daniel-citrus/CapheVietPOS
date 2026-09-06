@@ -238,13 +238,16 @@ flowchart LR
 
 The **port** is `MenuStore` (`shared/MenuStore.ts`): 15 async methods returning
 domain objects, rejecting with `RepositoryError`. Server-side it has two
-**adapters** and one **decorator**; the frontend does **not** implement it.
+**adapters** and one **decorator** (classes that `implements` it); the frontend
+doesn't implement it but is structurally checked against it.
 
 - **Client** — `menuApi` (`src/api/menu.ts`) is a flat object of 15 functions,
   one `fetch` to `/api/menu/*` each, no logic. `client.ts` (`apiFetch`) attaches
   `X-Role` and maps an error body back to `ValidationError` / `PermissionError` /
-  `NotFoundError`. `menuApi`'s method shapes are checked against the port's input
-  types, which it imports from `shared/MenuStore.ts`.
+  `NotFoundError`. The object ends with `satisfies MenuStore`, so its method
+  names, arity, arguments and return types are all verified against the port —
+  the client surface can't drift from it — while each `apiFetch` return type is
+  inferred from the port rather than hand-annotated.
 - **`InMemoryMenuAdapter`** (adapter) — in-memory arrays from `fixtures`
   (deep-cloned reads, session-only writes, 180 ms simulated latency). Picks up
   `fixtures.generated.json` if the Square export was run.
@@ -388,7 +391,7 @@ and the auth internals change.
 ```
 shared/                          imported by both sides via the `shared/*` alias
   domain/                        menu model + stub auth (see DOMAIN.md)
-  MenuStore.ts                   the port the server implements + client input types
+  MenuStore.ts                   the port — server adapters implement it, client menuApi `satisfies` it
   SalesStore.ts
   errors.ts                      RepositoryError family + ErrorCode + errorFromWire()
   api.ts                         REST + agent SSE wire contract

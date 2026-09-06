@@ -1,16 +1,4 @@
-import type {
-  Category,
-  Item,
-  Location,
-  ModifierGroup,
-  Money,
-} from "shared/domain";
-import type {
-  CreateItemInput,
-  CreateVariationInput,
-  UpdateItemPatch,
-  UpdateVariationPatch,
-} from "shared/MenuStore";
+import type { MenuStore } from "shared/MenuStore";
 import { apiFetch } from "./client";
 
 const enc = encodeURIComponent;
@@ -21,95 +9,86 @@ const enc = encodeURIComponent;
  * the audit log; `client.ts` maps error responses to the typed `RepositoryError`
  * family so callers can `catch` them by type.
  *
- * Method shapes mirror the server's `MenuStore` interface
- * (`shared/MenuStore.ts`) — the input types are imported from there so the two
- * stay in sync.
+ * `satisfies MenuStore` checks this object against the same port the server
+ * adapters implement, so the client surface can't drift from it — method names,
+ * arity, argument and return types are all verified, and each `apiFetch` return
+ * type is inferred from the port.
  */
 export const menuApi = {
   // --- locations ---------------------------------------------------------
-  listLocations: (): Promise<Location[]> => apiFetch("/menu/locations"),
+  listLocations: () => apiFetch("/menu/locations"),
 
   // --- categories ------------------------------------------------------
-  listCategories: (): Promise<Category[]> => apiFetch("/menu/categories"),
+  listCategories: () => apiFetch("/menu/categories"),
 
-  createCategory: (input: { name: string }): Promise<Category> =>
+  createCategory: (input) =>
     apiFetch("/menu/categories", {
       method: "POST",
       body: JSON.stringify(input),
     }),
 
-  renameCategory: (id: string, name: string): Promise<Category> =>
+  renameCategory: (id, name) =>
     apiFetch(`/menu/categories/${enc(id)}`, {
       method: "PATCH",
       body: JSON.stringify({ name }),
     }),
 
   // --- modifier groups ----------------------------------------------
-  listModifierGroups: (): Promise<ModifierGroup[]> =>
-    apiFetch("/menu/modifier-groups"),
+  listModifierGroups: () => apiFetch("/menu/modifier-groups"),
 
   // --- items ------------------------------------------------------
-  listItems: (opts?: { includeArchived?: boolean }): Promise<Item[]> =>
+  listItems: (opts) =>
     apiFetch(
       `/menu/items${opts?.includeArchived ? "?includeArchived=true" : ""}`,
     ),
 
-  getItem: (id: string): Promise<Item> => apiFetch(`/menu/items/${enc(id)}`),
+  getItem: (id) => apiFetch(`/menu/items/${enc(id)}`),
 
-  createItem: (input: CreateItemInput): Promise<Item> =>
+  createItem: (input) =>
     apiFetch("/menu/items", {
       method: "POST",
       body: JSON.stringify(input),
     }),
 
-  updateItem: (id: string, patch: UpdateItemPatch): Promise<Item> =>
+  updateItem: (id, patch) =>
     apiFetch(`/menu/items/${enc(id)}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
     }),
 
-  setItemArchived: (id: string, archived: boolean): Promise<Item> =>
+  setItemArchived: (id, archived) =>
     apiFetch(`/menu/items/${enc(id)}/archived`, {
       method: "POST",
       body: JSON.stringify({ archived }),
     }),
 
-  setItemImage: (id: string, imageUrl: string | null): Promise<Item> =>
+  setItemImage: (id, imageUrl) =>
     apiFetch(`/menu/items/${enc(id)}/image`, {
       method: "POST",
       body: JSON.stringify({ imageUrl }),
     }),
 
   // --- variations -----------------------------------------------
-  addVariation: (itemId: string, input: CreateVariationInput): Promise<Item> =>
+  addVariation: (itemId, input) =>
     apiFetch(`/menu/items/${enc(itemId)}/variations`, {
       method: "POST",
       body: JSON.stringify(input),
     }),
 
-  updateVariation: (
-    itemId: string,
-    variationId: string,
-    patch: UpdateVariationPatch,
-  ): Promise<Item> =>
-    apiFetch(
-      `/menu/items/${enc(itemId)}/variations/${enc(variationId)}`,
-      { method: "PATCH", body: JSON.stringify(patch) },
-    ),
+  updateVariation: (itemId, variationId, patch) =>
+    apiFetch(`/menu/items/${enc(itemId)}/variations/${enc(variationId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }),
 
-  removeVariation: (itemId: string, variationId: string): Promise<Item> =>
-    apiFetch(
-      `/menu/items/${enc(itemId)}/variations/${enc(variationId)}`,
-      { method: "DELETE" },
-    ),
+  removeVariation: (itemId, variationId) =>
+    apiFetch(`/menu/items/${enc(itemId)}/variations/${enc(variationId)}`, {
+      method: "DELETE",
+    }),
 
-  setVariationPrice: (
-    itemId: string,
-    variationId: string,
-    price: Money,
-  ): Promise<Item> =>
+  setVariationPrice: (itemId, variationId, price) =>
     apiFetch(
       `/menu/items/${enc(itemId)}/variations/${enc(variationId)}/price`,
       { method: "POST", body: JSON.stringify({ price }) },
     ),
-};
+} satisfies MenuStore;
