@@ -12,6 +12,7 @@ const NAV: { to: string; key: CopyKey; requires?: Capability }[] = [
   { to: "/categories", key: "nav.categories" },
   { to: "/modifier-groups", key: "nav.modifierGroups" },
   { to: "/pricing", key: "nav.pricing", requires: "pricing.read" },
+  { to: "/activity", key: "nav.activity" },
   { to: "/reporting", key: "nav.reporting" },
   { to: "/analytics", key: "nav.analytics" },
   { to: "/orders", key: "nav.orders" },

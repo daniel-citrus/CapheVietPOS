@@ -193,6 +193,7 @@ the Console list without a manual refresh (§7.4).
 | `/categories` | list · create · rename |
 | `/modifier-groups` | read-only table |
 | `/pricing` | one row per variation, inline price edit (admin) |
+| `/activity` | the audit log — `GET /api/audit`; every mutation (console or agent) with when / who / summary, and an expandable before → after (§7.6) |
 | `/reporting` · `/analytics` · `/orders` | navigable "no data yet" scaffolds |
 
 ---
@@ -262,6 +263,18 @@ everything else flows through the API.
 SSE union, and the `AgentChat/Confirm/Abort` request bodies. The one file both
 ends import to stay in sync.
 
+### 7.6 Audit log
+
+`AuditedCatalogRepository` (§7.2) writes to an `AuditLog` — one implementation
+today, `SqliteAuditLog` (`better-sqlite3`, one append-only table at
+`SQLITE_PATH`, created on boot). Swapping to Postgres is a second impl of the
+same interface. Each entry is `{ at, actorRole, actorId, action, entityType,
+entityId, summary, before?, after? }`; `summary` is the human line
+(`Cà phê sữa đá (M) $4.50 → $4.75`), `before`/`after` the raw snapshots.
+`GET /api/audit?limit=` returns recent entries; the Console's **Activity** tab
+(`routes/reports/ActivityPage`) renders them and re-fetches on
+`useCatalogRevision()` so a chat edit shows up immediately.
+
 ---
 
 ## 8. Configuration & secrets
@@ -320,7 +333,7 @@ The capability model lives in `shared/domain/auth.ts` so both ends agree.
 | Reporting / analytics / orders | navigable scaffolds; no order data pulled |
 | Modifier-group editing | read-only in the Console; the agent attaches/detaches but doesn't define groups |
 | Item image uploads against Square | reading an existing image works; setting one only works against the mock (Square needs a file upload, not a URL) |
-| Audit log | append-only SQLite; not yet surfaced in the UI, no retention policy |
+| Audit log | append-only SQLite (surfaced read-only in the **Activity** tab); no retention policy, no Postgres impl yet |
 | Auth | stubbed `X-Role` header; no real identity |
 | Conversation history | in-memory, lost on backend restart |
 | Tests | none |
@@ -342,7 +355,7 @@ flowchart LR
   subgraph NEXT["Harden"]
     direction TB
     X1["Real auth (Square OAuth / Clerk) replaces X-Role"]
-    X2["Audit log → Postgres; surfaced as an Activity view"]
+    X2["Audit log → Postgres; retention policy"]
     X3["Deploy target + secrets management"]
     X1 --> X2 --> X3
   end
@@ -401,7 +414,7 @@ src/                             React SPA — talks only to /api/*
   location/LocationContext.tsx   current location (Console-only)
   features/assistant/ · features/chat/   the mobile chat shell + transcript
   layout/AppShell.tsx            Console shell
-  routes/                        Console pages (catalog / pricing / reports)
+  routes/                        Console pages: catalog/ · pricing/ · reports/{ActivityPage, scaffolds}
   components/                    ModeToggle · ui.tsx · ItemThumbnail · PhinMark
   lib/                           useAsync · placeholderImage
 

@@ -97,12 +97,26 @@ const en = {
   "pricing.saved": "Price updated.",
   "pricing.invalid": "Enter a valid amount, e.g. 4.50",
 
+  "nav.activity": "Activity",
+
   "reporting.title": "Reporting",
   "analytics.title": "Analytics",
   "orders.title": "Order history",
   "scaffold.noData.title": "No data yet",
   "scaffold.noData.body":
     "Sales and order data appears here once the Square backend is connected (P2). P1 does not pull live revenue or customer data.",
+
+  "activity.title": "Activity",
+  "activity.subtitle":
+    "Every change made to the menu — by an admin in the console or by the assistant.",
+  "activity.col.when": "When",
+  "activity.col.who": "Who",
+  "activity.col.what": "Change",
+  "activity.before": "Before",
+  "activity.after": "After",
+  "activity.empty.title": "No changes yet",
+  "activity.empty.body":
+    "Edits to items, prices, categories and variations are recorded here with what changed.",
 
   "error.generic": "Something went wrong.",
   "notFound.title": "Page not found",

@@ -12,6 +12,7 @@ import { ItemDetailPage } from "./routes/catalog/ItemDetailPage";
 import { ItemsListPage } from "./routes/catalog/ItemsListPage";
 import { ModifierGroupsPage } from "./routes/catalog/ModifierGroupsPage";
 import { NotFoundPage } from "./routes/NotFoundPage";
+import { ActivityPage } from "./routes/reports/ActivityPage";
 import { AnalyticsPage } from "./routes/reports/AnalyticsPage";
 import { OrderHistoryPage } from "./routes/reports/OrderHistoryPage";
 import { ReportingPage } from "./routes/reports/ReportingPage";
@@ -31,6 +32,7 @@ function ConsoleApp() {
             <Route path="categories" element={<CategoriesPage />} />
             <Route path="modifier-groups" element={<ModifierGroupsPage />} />
             <Route path="pricing" element={<PricingPage />} />
+            <Route path="activity" element={<ActivityPage />} />
             <Route path="reporting" element={<ReportingPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="orders" element={<OrderHistoryPage />} />
