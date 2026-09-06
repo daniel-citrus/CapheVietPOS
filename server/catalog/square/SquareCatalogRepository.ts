@@ -5,7 +5,7 @@ import type {
   ModifierGroup,
   Money,
 } from "shared/domain";
-import { squareApiBase } from "../../config/env";
+import { config } from "../../config";
 import type {
   CatalogRepository,
   CreateItemInput,
@@ -24,8 +24,9 @@ import {
 } from "./mapper";
 
 /**
- * Talks to Square's Catalog API through the Vite dev proxy (`/api/square`),
- * which injects the access token server-side. See vite.config.ts.
+ * Talks to Square's Catalog API directly (server-side), setting the access
+ * token from `config.square`. The browser never sees this — it calls the
+ * backend's `/api/catalog/*` routes.
  *
  * Writes retrieve the current object first (for its `version`), mutate the
  * tree, and upsert the whole item — Square's optimistic-concurrency model.
@@ -37,13 +38,18 @@ export class SquareCatalogRepository implements CatalogRepository {
   ): Promise<T> {
     let res: Response;
     try {
-      res = await fetch(`${squareApiBase}${path}`, {
+      res = await fetch(`${config.square.apiBase}${path}`, {
         ...init,
-        headers: { "Content-Type": "application/json", ...init?.headers },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.square.token}`,
+          "Square-Version": config.square.version,
+          ...init?.headers,
+        },
       });
     } catch (cause) {
       throw new RepositoryError(
-        "Could not reach Square (is the dev server running with SQUARE_ACCESS_TOKEN set?)",
+        "Could not reach Square (is SQUARE_ACCESS_TOKEN set and valid?)",
         { cause },
       );
     }

@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type {
   Category,
   Item,
@@ -6,12 +8,12 @@ import type {
 } from "shared/domain";
 
 /**
- * Fixtures for P1.
+ * Seed data for the mock catalog repository (DATA_SOURCE=mock).
  *
  * If scripts/export-square-catalog.mjs has been run, `fixtures.generated.json`
- * exists and is used (real catalog + locations pulled once from Square).
- * Otherwise the hand-authored placeholder below is used. Orders/customers are
- * NOT part of fixtures by design.
+ * exists next to this file and is used (real catalog + locations pulled once
+ * from Square). Otherwise the hand-authored placeholder below is used.
+ * Orders/customers are NOT part of fixtures by design.
  */
 
 const usd = (amount: number) => ({ amount, currency: "USD" });
@@ -23,12 +25,12 @@ interface GeneratedFixtures {
   items: Item[];
 }
 
-const generatedModules = import.meta.glob<{ default: GeneratedFixtures }>(
-  "./fixtures.generated.json",
-  { eager: true },
+const generatedPath = fileURLToPath(
+  new URL("./fixtures.generated.json", import.meta.url),
 );
-const generated: GeneratedFixtures | undefined =
-  Object.values(generatedModules)[0]?.default;
+const generated: GeneratedFixtures | undefined = existsSync(generatedPath)
+  ? (JSON.parse(readFileSync(generatedPath, "utf8")) as GeneratedFixtures)
+  : undefined;
 
 export const fromSquareExport = Boolean(generated);
 

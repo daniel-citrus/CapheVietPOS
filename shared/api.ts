@@ -23,6 +23,23 @@ export interface Meta {
 /** Stub identity sent on every request as the `X-Role` header. */
 export type RoleHeader = "admin" | "staff";
 
+/** One row of the append-only audit log. `GET /api/audit` returns these. */
+export interface AuditEntry {
+  id: string;
+  /** ISO timestamp. */
+  at: string;
+  actorRole: "admin" | "staff";
+  actorId: string;
+  /** e.g. "setVariationPrice", "createItem", "archiveItem". */
+  action: string;
+  entityType: "item" | "category" | "variation";
+  entityId: string;
+  /** Human-readable one-liner, e.g. 'Cà phê sữa đá (M) $4.50 → $4.75'. */
+  summary: string;
+  before?: unknown;
+  after?: unknown;
+}
+
 // --- Agent ---------------------------------------------------------------
 
 export interface ToolCall {
