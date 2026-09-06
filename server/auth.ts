@@ -7,7 +7,7 @@ import {
   type CurrentUser,
 } from "shared/domain";
 import { PermissionError } from "shared/errors";
-import type { CatalogRepository } from "./catalog/CatalogRepository";
+import type { CatalogRepository } from "shared/CatalogRepository";
 import { catalogRepository } from "./catalog/factory";
 import { AuditedCatalogRepository } from "./catalog/AuditedCatalogRepository";
 import { auditLog } from "./audit/factory";

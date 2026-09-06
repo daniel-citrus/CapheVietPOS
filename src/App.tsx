@@ -4,6 +4,7 @@ import { ModeToggle } from "./components/ModeToggle";
 import { AssistantView } from "./features/assistant/AssistantView";
 import { AppShell } from "./layout/AppShell";
 import { LocationProvider } from "./location/LocationContext";
+import { MetaProvider } from "./meta/MetaContext";
 import { RepositoryProvider } from "./repositories/RepositoryContext";
 import { CategoriesPage } from "./routes/catalog/CategoriesPage";
 import { ItemCreatePage } from "./routes/catalog/ItemCreatePage";
@@ -50,9 +51,11 @@ export default function App() {
   return (
     <RepositoryProvider>
       <AuthProvider>
-        <SettingsProvider>
-          <Surface />
-        </SettingsProvider>
+        <MetaProvider>
+          <SettingsProvider>
+            <Surface />
+          </SettingsProvider>
+        </MetaProvider>
       </AuthProvider>
     </RepositoryProvider>
   );

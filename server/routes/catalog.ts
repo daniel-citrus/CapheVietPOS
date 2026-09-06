@@ -5,7 +5,7 @@ import type {
   CreateVariationInput,
   UpdateItemPatch,
   UpdateVariationPatch,
-} from "../catalog/CatalogRepository";
+} from "shared/CatalogRepository";
 import { requireCapability } from "../auth";
 
 interface ItemParams {

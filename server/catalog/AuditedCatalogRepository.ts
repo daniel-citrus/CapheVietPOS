@@ -6,7 +6,7 @@ import type {
   CreateVariationInput,
   UpdateItemPatch,
   UpdateVariationPatch,
-} from "./CatalogRepository";
+} from "shared/CatalogRepository";
 
 /**
  * Per-request decorator: passes reads straight through, and records an audit

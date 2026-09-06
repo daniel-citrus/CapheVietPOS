@@ -4,6 +4,7 @@ import type { Item } from "shared/domain";
 import { formatMoney } from "shared/domain";
 import { useAuth } from "../../auth/AuthContext";
 import { useRepositories } from "../../repositories/RepositoryContext";
+import { useMeta } from "../../meta/MetaContext";
 import { useAsync } from "../../lib/useAsync";
 import { ItemThumbnail } from "../../components/ItemThumbnail";
 import {
@@ -22,7 +23,8 @@ import { t } from "../../i18n/copy";
 
 export function ItemDetailPage() {
   const { itemId = "" } = useParams();
-  const { catalog, source } = useRepositories();
+  const { catalog } = useRepositories();
+  const { dataSource } = useMeta();
   const { can } = useAuth();
   const navigate = useNavigate();
 
@@ -73,7 +75,7 @@ export function ItemDetailPage() {
       <ImageSection
         item={item.data}
         writable={writable}
-        canEdit={source !== "square"}
+        canEdit={dataSource !== "square"}
         onSaved={item.reload}
       />
 

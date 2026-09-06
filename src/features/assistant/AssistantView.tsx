@@ -2,14 +2,13 @@ import { useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { ModeToggle } from "../../components/ModeToggle";
 import { PhinMark } from "../../components/PhinMark";
-import { useAnthropicAvailability } from "../../config/agentAvailability";
-import { useRepositories } from "../../repositories/RepositoryContext";
+import { useMeta } from "../../meta/MetaContext";
 import { useSettings } from "../../settings/SettingsContext";
 import { ChatView } from "../chat/ChatView";
 
 function DataSourceBadge() {
-  const { source } = useRepositories();
-  return source === "square" ? (
+  const { dataSource } = useMeta();
+  return dataSource === "square" ? (
     <span className="badge badge--live">
       <span className="dot" /> Square
     </span>
@@ -23,8 +22,7 @@ function DataSourceBadge() {
 function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { role, setRole } = useAuth();
   const { requireConfirmation, setRequireConfirmation } = useSettings();
-  const { source } = useRepositories();
-  const availability = useAnthropicAvailability();
+  const { dataSource, agentAvailable, loading } = useMeta();
 
   return (
     <>
@@ -54,24 +52,20 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <div className="settings-row">
           <span>Catalog source</span>
           <span style={{ color: "var(--muted)" }}>
-            {source === "square" ? "Square (live)" : "Mock fixtures"}
+            {dataSource === "square" ? "Square (live)" : "Mock fixtures"}
           </span>
         </div>
         <div className="settings-row">
           <span>Agent</span>
           <span style={{ color: "var(--muted)" }}>
-            {availability === "checking"
-              ? "Checking…"
-              : availability === "available"
-                ? "Claude"
-                : "Offline parser"}
+            {loading ? "Checking…" : agentAvailable ? "Claude" : "Offline parser"}
           </span>
         </div>
         <p style={{ marginTop: 10, fontSize: "0.75rem", color: "var(--muted)" }}>
-          Set <code>VITE_DATA_SOURCE</code> here, and{" "}
-          <code>SQUARE_ACCESS_TOKEN</code> / <code>ANTHROPIC_API_KEY</code> in{" "}
-          <code>.env.local</code> — both are read server-side only, never
-          bundled into the browser.
+          Set <code>DATA_SOURCE</code>, <code>SQUARE_ACCESS_TOKEN</code> and{" "}
+          <code>ANTHROPIC_API_KEY</code> in the backend&rsquo;s{" "}
+          <code>.env.local</code> — the browser never sees the tokens, only
+          whether they&rsquo;re set.
         </p>
       </div>
     </>

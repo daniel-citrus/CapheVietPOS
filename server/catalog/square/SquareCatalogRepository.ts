@@ -12,7 +12,7 @@ import type {
   CreateVariationInput,
   UpdateItemPatch,
   UpdateVariationPatch,
-} from "../CatalogRepository";
+} from "shared/CatalogRepository";
 import { NotFoundError, RepositoryError, ValidationError } from "shared/errors";
 import {
   categoryFromSquare,

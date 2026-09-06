@@ -1,6 +1,6 @@
 import { config } from "../config";
-import type { CatalogRepository } from "./CatalogRepository";
-import type { SalesRepository } from "./SalesRepository";
+import type { CatalogRepository } from "shared/CatalogRepository";
+import type { SalesRepository } from "shared/SalesRepository";
 import { MockCatalogRepository } from "./mock/MockCatalogRepository";
 import { MockSalesRepository } from "./mock/MockSalesRepository";
 import { SquareCatalogRepository } from "./square/SquareCatalogRepository";
