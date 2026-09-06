@@ -43,6 +43,14 @@ export interface Item {
   /** References to reusable, business-level ModifierGroups. */
   modifierGroupIds: string[];
   archived: boolean;
+  /**
+   * Display image. Maps to Square's item_data.image_ids[0], resolved to its
+   * CatalogImage URL. Square only supports attaching an image via its Images
+   * API (real file upload); this app can read whatever's already there, but
+   * setting a new one by URL only works against the mock repository — see
+   * CatalogRepository.setItemImage.
+   */
+  imageUrl?: string;
 }
 
 /** Maps to Square MODIFIER. */

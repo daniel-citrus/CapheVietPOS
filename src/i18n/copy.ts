@@ -51,9 +51,14 @@ const en = {
   "items.status.active": "Active",
   "items.status.archived": "Archived",
 
+  "item.section.image": "Image",
   "item.section.details": "Details",
   "item.section.variations": "Variations",
   "item.section.modifierGroups": "Modifier groups",
+  "item.image.url": "Image URL",
+  "item.image.hint": "Falls back to a generated placeholder when empty.",
+  "item.image.squareNotice":
+    "Managed in Square — this app can show an existing image but can't set a new one yet (Square requires uploading a file, not a URL).",
   "item.field.name": "Name",
   "item.field.description": "Description",
   "item.field.category": "Category",

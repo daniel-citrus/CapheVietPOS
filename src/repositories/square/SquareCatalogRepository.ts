@@ -153,12 +153,34 @@ export class SquareCatalogRepository implements CatalogRepository {
 
   // --- Items -------------------------------------------------------
   async listItems(opts?: { includeArchived?: boolean }): Promise<Item[]> {
-    const items = (await this.listByType("ITEM")).map(itemFromSquare);
+    const objects = await this.listByType("ITEM");
+    const needsImages = objects.some(
+      (o) => (o.item_data?.image_ids?.length ?? 0) > 0,
+    );
+    const images = needsImages
+      ? this.imageMap(await this.listByType("IMAGE"))
+      : new Map<string, string>();
+    const items = objects.map((o) => itemFromSquare(o, images));
     return opts?.includeArchived ? items : items.filter((i) => !i.archived);
   }
 
   async getItem(id: string): Promise<Item> {
-    return itemFromSquare(await this.retrieveObject(id));
+    // include_related_objects=true returns any attached IMAGE objects inline,
+    // so a single-item fetch doesn't need a second round trip.
+    const data = await this.request<{
+      object?: SquareCatalogObject;
+      related_objects?: SquareCatalogObject[];
+    }>(`/catalog/object/${id}?include_related_objects=true`);
+    if (!data.object) throw new NotFoundError("Catalog object", id);
+    return itemFromSquare(data.object, this.imageMap(data.related_objects ?? []));
+  }
+
+  private imageMap(objects: SquareCatalogObject[]): Map<string, string> {
+    const map = new Map<string, string>();
+    for (const o of objects) {
+      if (o.type === "IMAGE" && o.image_data?.url) map.set(o.id, o.image_data.url);
+    }
+    return map;
   }
 
   async createItem(input: CreateItemInput): Promise<Item> {
@@ -302,5 +324,16 @@ export class SquareCatalogRepository implements CatalogRepository {
       price_money: toSquareMoney(price),
     };
     return itemFromSquare(await this.upsert(current));
+  }
+
+  async setItemImage(_itemId: string, _imageUrl: string | null): Promise<Item> {
+    // Square has no "attach an image by URL" operation — only its Images API,
+    // which takes an uploaded file (multipart) and returns a CatalogImage id
+    // to attach to the item. That upload flow isn't implemented in this dev
+    // proxy. Reading an image already attached in Square works (see
+    // listItems/getItem); setting one from this app doesn't, yet.
+    throw new ValidationError(
+      "Setting an item's image against Square isn't supported yet — Square requires uploading a file via its Images API, not a URL. Add or change the image in Square directly.",
+    );
   }
 }

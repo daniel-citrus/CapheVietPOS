@@ -76,7 +76,7 @@ async function listCatalog() {
   let cursor;
   do {
     const page = await api("/v2/catalog/list", {
-      types: "ITEM,ITEM_VARIATION,CATEGORY,MODIFIER_LIST,MODIFIER",
+      types: "ITEM,ITEM_VARIATION,CATEGORY,MODIFIER_LIST,MODIFIER,IMAGE",
       ...(cursor ? { cursor } : {}),
     });
     objects.push(...(page.objects ?? []));
@@ -154,6 +154,8 @@ function mapCatalog(objects) {
       const modifierGroupIds = (d.modifier_list_info ?? [])
         .filter((mli) => mli.enabled !== false)
         .map((mli) => mli.modifier_list_id);
+      const imageId = d.image_ids?.[0];
+      const imageUrl = imageId ? byId.get(imageId)?.image_data?.url : undefined;
       return {
         id: o.id,
         name: d.name ?? o.id,
@@ -162,6 +164,7 @@ function mapCatalog(objects) {
         variations,
         modifierGroupIds,
         archived: d.is_archived === true,
+        imageUrl: imageUrl || undefined,
       };
     });
 

@@ -50,6 +50,16 @@ export interface CatalogRepository {
     variationId: string,
     price: Money,
   ): Promise<Item>;
+
+  /**
+   * Set (or clear, passing null) an item's display image, by URL.
+   * Kept as its own method — like setVariationPrice — because it maps to a
+   * real capability, not general item fields. Square itself has no "set by
+   * URL" operation (only its Images upload API), so implementations may
+   * legitimately reject this; see MockCatalogRepository vs
+   * SquareCatalogRepository.
+   */
+  setItemImage(itemId: string, imageUrl: string | null): Promise<Item>;
 }
 
 export interface CreateItemInput {

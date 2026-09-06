@@ -32,6 +32,8 @@ export interface SquareCatalogObject {
   category_data?: { name?: string };
   modifier_list_data?: SquareModifierListData;
   modifier_data?: { name?: string; price_money?: SquareMoney };
+  /** Only populated on type: "IMAGE" objects. */
+  image_data?: { url?: string; name?: string };
 }
 
 interface SquareItemData {
@@ -42,6 +44,8 @@ interface SquareItemData {
   categories?: { id: string }[];
   variations?: SquareCatalogObject[];
   modifier_list_info?: { modifier_list_id: string; enabled?: boolean }[];
+  /** IDs of IMAGE catalog objects attached to this item; we use the first. */
+  image_ids?: string[];
 }
 
 interface SquareItemVariationData {
@@ -89,10 +93,19 @@ export function variationFromSquare(obj: SquareCatalogObject): Variation {
   };
 }
 
-export function itemFromSquare(obj: SquareCatalogObject): Item {
+/**
+ * @param imagesById Map of IMAGE catalog object id → hosted URL, resolved by
+ * the caller (a list of IMAGE objects fetched or included alongside this
+ * item — see SquareCatalogRepository). Omit if images weren't fetched.
+ */
+export function itemFromSquare(
+  obj: SquareCatalogObject,
+  imagesById?: Map<string, string>,
+): Item {
   const d = obj.item_data ?? {};
   const categoryId =
     d.category_id ?? (d.categories && d.categories[0]?.id) ?? undefined;
+  const imageId = d.image_ids?.[0];
   return {
     id: obj.id,
     name: d.name ?? "(unnamed)",
@@ -103,6 +116,7 @@ export function itemFromSquare(obj: SquareCatalogObject): Item {
       .filter((mli) => mli.enabled !== false)
       .map((mli) => mli.modifier_list_id),
     variations: (d.variations ?? []).map(variationFromSquare),
+    imageUrl: imageId ? imagesById?.get(imageId) : undefined,
   };
 }
 

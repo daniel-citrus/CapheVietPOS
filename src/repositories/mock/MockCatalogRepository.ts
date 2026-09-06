@@ -200,6 +200,21 @@ export class MockCatalogRepository implements CatalogRepository {
     return clone(item);
   }
 
+  async setItemImage(id: string, imageUrl: string | null): Promise<Item> {
+    await delay();
+    const item = this.mustGet(id);
+    if (imageUrl === null) {
+      item.imageUrl = undefined;
+      return clone(item);
+    }
+    const trimmed = imageUrl.trim();
+    if (!/^https?:\/\//i.test(trimmed) && !trimmed.startsWith("data:")) {
+      throw new ValidationError("Image must be an http(s) URL or a data URI");
+    }
+    item.imageUrl = trimmed;
+    return clone(item);
+  }
+
   // --- internals ---------------------------------------------------------
 
   private mustGet(id: string): Item {

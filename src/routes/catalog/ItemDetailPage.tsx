@@ -5,6 +5,7 @@ import { formatMoney } from "../../domain";
 import { useAuth } from "../../auth/AuthContext";
 import { useRepositories } from "../../repositories/RepositoryContext";
 import { useAsync } from "../../lib/useAsync";
+import { ItemThumbnail } from "../../components/ItemThumbnail";
 import {
   Badge,
   Button,
@@ -21,7 +22,7 @@ import { t } from "../../i18n/copy";
 
 export function ItemDetailPage() {
   const { itemId = "" } = useParams();
-  const { catalog } = useRepositories();
+  const { catalog, source } = useRepositories();
   const { can } = useAuth();
   const navigate = useNavigate();
 
@@ -69,6 +70,13 @@ export function ItemDetailPage() {
         <p className="mb-4 text-sm text-[var(--muted)]">{t("common.readOnlyNotice")}</p>
       )}
 
+      <ImageSection
+        item={item.data}
+        writable={writable}
+        canEdit={source !== "square"}
+        onSaved={item.reload}
+      />
+
       <DetailsSection
         item={item.data}
         categories={categories.data ?? []}
@@ -101,6 +109,76 @@ export function ItemDetailPage() {
         </Button>
       </div>
     </div>
+  );
+}
+
+function ImageSection({
+  item,
+  writable,
+  canEdit,
+  onSaved,
+}: {
+  item: Item;
+  writable: boolean;
+  /** false when the catalog source is Square — see setItemImage. */
+  canEdit: boolean;
+  onSaved: () => void;
+}) {
+  const { catalog } = useRepositories();
+  const [url, setUrl] = useState(item.imageUrl ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string>();
+
+  useEffect(() => setUrl(item.imageUrl ?? ""), [item]);
+
+  const dirty = url !== (item.imageUrl ?? "");
+
+  async function save() {
+    setSaving(true);
+    setError(undefined);
+    try {
+      await catalog.setItemImage(item.id, url.trim() || null);
+      onSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("error.generic"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card className="mb-4 p-5">
+      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
+        {t("item.section.image")}
+      </h2>
+      <div className="flex items-start gap-4">
+        <ItemThumbnail item={item} size={80} />
+        <div className="flex-1">
+          {writable && canEdit ? (
+            <Field label={t("item.image.url")} error={error} hint={t("item.image.hint")}>
+              <TextInput
+                value={url}
+                placeholder="https://…"
+                onChange={(e) => setUrl(e.target.value)}
+              />
+            </Field>
+          ) : (
+            !item.imageUrl && (
+              <p className="text-sm text-[var(--muted)]">
+                {writable ? t("item.image.squareNotice") : t("item.image.hint")}
+              </p>
+            )
+          )}
+          {writable && canEdit && (
+            <div className="mt-3">
+              <Button variant="primary" disabled={!dirty || saving} onClick={save}>
+                {saving ? t("common.loading") : t("common.save")}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
   );
 }
 

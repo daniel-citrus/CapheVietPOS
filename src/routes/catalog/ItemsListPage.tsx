@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useRepositories } from "../../repositories/RepositoryContext";
 import { useAsync } from "../../lib/useAsync";
+import { ItemThumbnail } from "../../components/ItemThumbnail";
 import {
   Badge,
   Button,
@@ -83,6 +84,7 @@ export function ItemsListPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border)] text-left text-xs uppercase tracking-wide text-[var(--muted)]">
+                <th className="px-4 py-2 font-medium" aria-hidden="true" />
                 <th className="px-4 py-2 font-medium">{t("items.col.name")}</th>
                 <th className="px-4 py-2 font-medium">{t("items.col.category")}</th>
                 <th className="px-4 py-2 font-medium">{t("items.col.variations")}</th>
@@ -96,6 +98,9 @@ export function ItemsListPage() {
                   key={item.id}
                   className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--bg)]"
                 >
+                  <td className="px-4 py-2.5">
+                    <ItemThumbnail item={item} size={32} />
+                  </td>
                   <td className="px-4 py-2.5">
                     <Link
                       to={`/items/${item.id}`}

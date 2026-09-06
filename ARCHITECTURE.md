@@ -271,7 +271,10 @@ Square** (no combos/bundles, no channel/time pricing, no nested modifiers). Full
 detail in `DOMAIN.md`. Shapes:
 
 - `Money { amount: integer minor units, currency }` — never a float
-- `Item { id, name, description?, categoryId?, variations[], modifierGroupIds[], archived }`
+- `Item { id, name, description?, categoryId?, variations[], modifierGroupIds[], archived, imageUrl? }`
+  — `imageUrl` is read-through from Square's attached `CatalogImage`; setting a
+  new one only works against the mock repo (Square needs a real file upload,
+  not a URL) — see `setItemImage` in §7.2
 - `Variation { id, itemId, name, price: Money, sku?, priceOverrides[] }` — the
   priced sellable unit; "size" lives here
 - `ModifierGroup { id, name, required, minSelect, maxSelect, options[] }` —
@@ -286,7 +289,7 @@ Helpers: `formatMoney`, `parseMoney`, `effectivePrice(variation, locationId)`.
 ```mermaid
 flowchart LR
   subgraph IFACES["Interfaces (src/repositories/*.ts)"]
-    CR["CatalogRepository<br/>listLocations · listCategories · createCategory · renameCategory<br/>listModifierGroups · listItems · getItem<br/>createItem · updateItem · setItemArchived<br/>addVariation · updateVariation · removeVariation · setVariationPrice"]
+    CR["CatalogRepository<br/>listLocations · listCategories · createCategory · renameCategory<br/>listModifierGroups · listItems · getItem<br/>createItem · updateItem · setItemArchived<br/>addVariation · updateVariation · removeVariation<br/>setVariationPrice · setItemImage"]
     SR["SalesRepository<br/>listOrders · getSalesSummary"]
   end
   MOCKC["MockCatalogRepository"]
@@ -300,7 +303,7 @@ flowchart LR
   MOCKS -->|implements| SR
 ```
 
-All 14 `CatalogRepository` methods are async, return plain domain objects, and
+All 15 `CatalogRepository` methods are async, return plain domain objects, and
 reject with a typed `RepositoryError` on failure.
 
 Every method is **async and remote-call-shaped**: returns plain domain objects,
@@ -433,6 +436,7 @@ phase; `can()` and every call site stay.
 | **Refunds, inventory, staff/shifts, customers/loyalty** | out of scope |
 | **Modifier group editing** | read-only in the Console; the agent can attach/detach groups but not define new ones |
 | **Location switcher & per-location price overrides** | model supports `locationId` + `priceOverrides`; no UI |
+| **Item image uploads against Square** | reading an existing Square image works; setting a new one only works against the mock repo (URL field) — Square requires a real file upload via its Images API, not implemented |
 | **Audit log** | none — no "who changed what" trail on writes |
 | **Auth** | stubbed; no real identity or security |
 | **Tests** | none |
@@ -527,10 +531,12 @@ src/
   location/LocationContext.tsx   current location (console-only)
   i18n/copy.ts                   t() seam — English only
   lib/useAsync.ts                minimal async-data hook (no cache)
+  lib/placeholderImage.ts        deterministic initials-badge SVG data URI for items with no image
 
   components/
     ModeToggle.tsx               Assistant ⟷ Console switch (both shells)
     ui.tsx                       Console primitives (Button, Card, Field, TextInput, Badge, Spinner, EmptyState, ErrorState…)
+    ItemThumbnail.tsx            renders item.imageUrl, or the generated placeholder
     PhinMark.tsx                 brand mark SVG
 
   layout/AppShell.tsx            Console shell — sidebar nav (capability-filtered), role switcher, data badge

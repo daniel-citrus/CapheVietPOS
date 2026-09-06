@@ -54,9 +54,12 @@ Item {
   variations: Variation[]        // the priced, sellable units
   modifierGroupIds: string[]     // references to reusable business-level ModifierGroups
   archived: boolean
+  imageUrl?                      // display image
 }
 ```
 Maps to Square `ITEM`. "Size" is NOT here — size is an item option that produces distinct variations.
+
+`imageUrl` maps to Square's `item_data.image_ids[0]`, resolved to its `CatalogImage.image_data.url`. Square only supports attaching an image via its Images API — an actual file upload, not a URL — so this app can faithfully *read* whatever's already attached in Square, but the dedicated `setItemImage(itemId, imageUrl)` repository method only works against the mock repository (a plain URL field, for demo/dev convenience). `SquareCatalogRepository.setItemImage` rejects with a clear error rather than silently doing something Square can't actually do.
 
 ### Variation
 ```
