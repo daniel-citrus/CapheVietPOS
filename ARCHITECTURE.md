@@ -7,23 +7,30 @@ _Cà phê Việt menu admin — the whole app, as built. Companion docs: `DOMAIN
 
 ## 1. What this is
 
-A **client-only React SPA** (Vite) for managing the menu of a US-based,
-Vietnamese-branded coffee business whose catalog of record is **Square**. It
-presents **two interchangeable surfaces behind one toggle**:
+A menu-management app for a US-based, Vietnamese-branded coffee business whose
+catalog of record is **Square**. It has two parts:
+
+- a **Fastify backend** (`server/`) that owns everything: the Square
+  integration, the anti-corruption mapper, validation, permission checks, the
+  LLM agent loop, and an append-only audit log. It holds the two secrets (the
+  Square token, the Anthropic key) and never leaks them.
+- a **React SPA** (`src/`) that talks to nothing but `/api/*`. It has two
+  interchangeable surfaces behind one toggle:
 
 | Surface | What it is | Shell |
 |---|---|---|
-| **Assistant** (default) | Agent-first chat. You describe menu changes in plain language; an LLM (Claude with tool-use, or an offline command parser when no key is set) executes them through tools. Every mutation is gated by a human **Apply / Skip** card. | `features/assistant/AssistantView` — mobile, single-column |
-| **Console** | Conventional admin console: React-Router screens for Items, Categories, Modifier groups, Pricing, and navigable Reporting / Analytics / Order-history scaffolds. Sidebar nav, role-gated edit actions. | `layout/AppShell` — sidebar + content |
+| **Assistant** (default) | Agent-first chat. You describe menu changes in plain language; the backend runs an LLM tool-loop (or a small offline parser when no key is set) and streams the result. Every mutation is gated by a human **Apply / Skip** card. | `features/assistant/AssistantView` — mobile |
+| **Console** | Conventional admin console: React-Router screens for Items, Categories, Modifier groups, Pricing, and navigable reporting scaffolds. | `layout/AppShell` — sidebar |
 
-The two surfaces are **peers**, not layers. They share one contract — the
-`CatalogRepository` interface — and nothing else. A change made in one is visible
-in the other (see §7, cross-surface reactivity).
+Both surfaces call the **same contract** — the `CatalogRepository` interface —
+implemented client-side by a thin `HttpCatalogRepository` (one `fetch` per
+method). Behind the API, the same interface is implemented by the mock or the
+Square repository. Swapping the two is a server-side env flag, not a code
+change.
 
-**Design principle:** every screen and every agent tool talks to the repository
-interface, never to data directly. The implementation behind that interface
-(in-memory mock, live Square, or a future backend proxy) swaps with **zero
-component changes**.
+Everything is stateless with respect to the catalog (Square is the source of
+truth); the one piece of persistence is the SQLite **audit log**, written
+behind an `AuditLog` interface so it can become Postgres later.
 
 ---
 
@@ -31,17 +38,15 @@ component changes**.
 
 | Concern | Choice |
 |---|---|
-| Build / dev server | Vite 8, `@vitejs/plugin-react` |
-| UI | React 19, TypeScript 6 (strict, `erasableSyntaxOnly`, `verbatimModuleSyntax`) |
-| Routing (Console only) | React Router 7 (`BrowserRouter`) |
-| Styling | Tailwind CSS v4 (`@tailwindcss/vite`) + hand-authored CSS in `index.css` for the chat surface; design tokens as CSS custom properties |
-| LLM | `@anthropic-ai/sdk` (browser build, streaming, tool use) |
-| Lint | oxlint |
-| State | React context + hooks; `useSyncExternalStore` for the cross-surface revision counter. No Redux/Zustand/query library. |
-| Tests | none yet (repository/toolbox layer is thin and verified by eye) |
+| Frontend | React 19 + TypeScript 6, Vite 8, React Router 7 (Console only), Tailwind v4 + hand-CSS for the chat surface |
+| Backend | Fastify 5 on Node 24, run in dev by `tsx watch` |
+| LLM | `@anthropic-ai/sdk` — **server-side only** (streaming, tool use) |
+| Audit log | `better-sqlite3` behind an `AuditLog` interface |
+| Shared | `shared/` — the domain model, the repository interfaces, the wire contract, the error types; imported by both sides via the `shared/*` path alias |
+| Lint | oxlint · **no test framework yet** |
 
-Runtime dependencies are deliberately few: `react`, `react-dom`,
-`react-router-dom`, `@anthropic-ai/sdk`.
+Runtime deps: `react`, `react-dom`, `react-router-dom` (client); `fastify`,
+`better-sqlite3`, `@anthropic-ai/sdk` (server).
 
 ---
 
@@ -49,381 +54,260 @@ Runtime dependencies are deliberately few: `react`, `react-dom`,
 
 ```mermaid
 flowchart TD
-  TOGGLE{{"Mode toggle<br/>(SettingsContext)"}}
+  BROWSER["React SPA (src/)<br/>Assistant + Console — talks only to /api/*"]
+  BROWSER -->|"REST · SSE"| API
 
-  ASSIST["Assistant surface<br/>chat → agent (Claude / offline) → tool calls"]
-  CONSOLE["Console surface<br/>sidebar + routed screens"]
+  subgraph API["Fastify backend (server/)"]
+    ROUTES["routes/ — catalog · sales · agent · meta · audit"]
+    AUTH["auth hook — X-Role → currentUser / can()"]
+    AUDITED["AuditedCatalogRepository<br/>(per request, wraps the repo)"]
+    AGENT["agent/ — loop (Claude) · offline (regex)<br/>· confirm round-trip"]
+    ROUTES --> AUTH --> AUDITED
+    ROUTES --> AGENT --> AUDITED
+  end
 
-  REPO["CatalogRepository<br/>(the interface — the swap seam)"]
-  MOCK["Mock impl<br/>in-memory fixtures"]
-  SQ["Square impl<br/>+ anti-corruption mapper"]
+  AUDITED --> REPO
+  AGENT -. "toolbox" .-> AUDITED
 
-  PROXY["Vite dev proxy<br/>injects both keys server-side — browser holds neither"]
-  ANTHROPIC["Anthropic API"]
-  SQUAREAPI["Square Catalog API"]
+  REPO["CatalogRepository (shared interface)"]
+  REPO --> SEL{"DATA_SOURCE"}
+  SEL -->|"mock (default)"| MOCK["MockCatalogRepository<br/>in-memory fixtures"]
+  SEL -->|"square"| SQ["SquareCatalogRepository<br/>+ anti-corruption mapper"]
 
-  TOGGLE --> ASSIST
-  TOGGLE --> CONSOLE
-  ASSIST -->|"tool calls"| REPO
-  CONSOLE -->|"useAsync"| REPO
-  REPO -. impl .-> MOCK
-  REPO -. impl .-> SQ
-  ASSIST -->|"/api/anthropic"| PROXY
-  SQ --> PROXY
-  PROXY --> ANTHROPIC
-  PROXY --> SQUAREAPI
+  SQ -->|"token server-side"| SQUARE["Square Catalog API"]
+  AGENT -->|"key server-side"| ANTHROPIC["Anthropic API"]
+  AUDITED --> LOG["SqliteAuditLog"]
 
   classDef seam fill:#f5e9e4,stroke:#7d1f2d,color:#3a1a14;
   class REPO,MOCK,SQ seam
 ```
 
-Both surfaces are peers that share nothing but this repository interface (shaded
-pink). §5–§9 unpack each box; the fuller, all-components version of this diagram
-is in the session history if you want it back.
+The browser holds no secrets and makes no third-party calls. The backend is the
+only trust boundary.
 
 ---
 
-## 4. Runtime composition
+## 4. Runtime composition (frontend)
 
-`main.tsx` mounts `<App/>` in `React.StrictMode`. `App.tsx` is only a provider
-tree plus a surface switch:
+`main.tsx` mounts `<App/>`. `App.tsx` is a provider tree plus a surface switch:
 
 ```mermaid
 flowchart TD
-  A["RepositoryProvider<br/>builds catalog + sales repos once (useMemo [])"]
-  B["AuthProvider<br/>stubbed role, persisted to sessionStorage"]
-  C["SettingsProvider<br/>mode + requireConfirmation, persisted to localStorage"]
+  A["RepositoryProvider<br/>builds HttpCatalog/HttpSales once"]
+  B["AuthProvider<br/>stub role → sessionStorage + apiClient X-Role header"]
+  M["MetaProvider<br/>GET /api/meta → { dataSource, agentAvailable }"]
+  C["SettingsProvider<br/>mode + requireConfirmation → localStorage"]
   D{"Surface: settings.mode"}
-  E["AssistantView"]
-  F["ConsoleApp<br/>BrowserRouter → LocationProvider → Routes"]
-  A --> B --> C --> D
-  D -->|assistant| E
-  D -->|console| F
+  A --> B --> M --> C --> D
+  D -->|assistant| E["AssistantView"]
+  D -->|console| F["ConsoleApp — BrowserRouter → LocationProvider → Routes"]
 ```
 
-| Provider | Holds | Persistence | Notes |
-|---|---|---|---|
-| `RepositoryProvider` | `{ catalog, sales, source }` | — | Chooses `Mock` vs `Square` from `VITE_DATA_SOURCE` at construction. Instances are stable for the session. |
-| `AuthProvider` | `{ user, role, setRole, can }` | `sessionStorage["cvp.devRole"]` | Stubbed. `can(capability)` is the single gate used by both surfaces. |
-| `SettingsProvider` | `{ mode, setMode, requireConfirmation, setRequireConfirmation }` | `localStorage["cpv.settings"]` | `mode` drives the top-level surface switch. |
-| `LocationProvider` | `{ currentLocation, allLocations }` | — | Console-only (inside `ConsoleApp`). Loads locations via the repository, picks the first active. No switcher UI yet. |
+`apiClient.ts` is the single fetch wrapper: it attaches the current `X-Role`
+header and rebuilds a `{ error: { code, message } }` response into the typed
+`RepositoryError` family, so component `catch` blocks are unchanged from when
+the repos ran in the browser.
 
 ---
 
 ## 5. The Assistant surface
 
-### 5.1 Components
+### 5.1 Client
 
-```
-AssistantView                     mobile shell — brand, DataSourceBadge, ⚙ SettingsPanel, ModeToggle
-└─ ChatView                        transcript + composer
-   ├─ intro / suggestion chips     shown when the transcript is empty
-   ├─ msg bubbles                  user / assistant text
-   ├─ Activity rows                one per tool call: running → done / error / declined
-   ├─ ConfirmCard                  Apply / Skip for a pending mutating tool call
-   └─ composer                     auto-growing textarea; Enter to send, ■ to stop
-```
+`ChatView` renders the transcript (user / assistant text, tool-activity rows,
+the `ConfirmCard`) and the composer. `useAgent()` is a **thin SSE client**:
 
-`SettingsPanel` (in the ⚙ menu) exposes: **View as** (admin/staff), **Confirm
-every change** (the `requireConfirmation` toggle), and read-outs of the catalog
-source and agent kind.
+- generates a `conversationId` (kept for the session)
+- `send(text)` → `POST /api/agent/chat` (SSE); parses the event stream and folds
+  each `AgentEvent` into the transcript with the same `handleEvent` switch the
+  in-browser agent used
+- on `awaiting_confirmation` → shows the `ConfirmCard`; **Apply/Skip** →
+  `POST /api/agent/confirm { callId, approved }`
+- **Stop** → aborts the fetch + `POST /api/agent/abort`
+- when "Confirm every change" is off, `send` passes `autoConfirm: true` and the
+  server skips the round-trip
 
-### 5.2 `useAgent()` — the bridge
-
-Constructs the agent once (`ClaudeAgent` if `hasAnthropicKey`, else
-`OfflineAgent`), keyed on the catalog repo. Owns:
-
-- `entries` — the chat transcript (`user` | `assistant` | `activity` | `notice`)
-- `busy`, `pending` (the active confirmation), an `AbortController` per turn
-- `send(text)` — runs a turn, translating streamed `AgentEvent`s into transcript
-  mutations
-- the **confirmation gate** passed to the agent as `turn.confirm(call)`:
-  - `!can("catalog.write")` → auto-deny
-  - `!requireConfirmation` → auto-approve
-  - else → set `pending`, return a promise the `ConfirmCard` buttons resolve
-- on a successful mutating tool result → `bumpCatalogRevision()` (see §7)
-
-### 5.3 The agent loop (`ClaudeAgent`)
+### 5.2 The server loop
 
 ```mermaid
 sequenceDiagram
   autonumber
-  participant User
-  participant UA as useAgent
-  participant CA as ClaudeAgent
+  participant U as Browser (useAgent)
+  participant R as POST /api/agent/chat
+  participant L as loop.ts / offline.ts
   participant API as Anthropic API
-  participant GATE as Confirmation gate
-  participant TBX as CatalogToolbox
-  participant REPO as CatalogRepository
+  participant P as pending.ts
+  participant TB as CatalogToolbox → req.catalog
 
-  User->>UA: send("raise cà phê sữa đá by 25¢")
-  UA->>CA: send(text, turn{emit, confirm, signal})
-  CA->>CA: history.push(user text)
-
-  loop up to 12 steps, until stop_reason ≠ "tool_use"
-    CA->>API: messages.stream(model, system, tools[12], history, effort:low)
-    API-->>CA: text deltas
-    CA-->>UA: emit(text) → assistant bubble grows
-    API-->>CA: finalMessage (may contain tool_use blocks)
-    CA->>CA: history.push(assistant message)
-    alt stop_reason == "tool_use"
-      loop each tool_use block
-        CA-->>UA: emit(tool_call) → Activity row "running"
-        alt tool.mutates
-          CA->>GATE: turn.confirm(call)
-          GATE-->>User: Apply / Skip card
-          User-->>GATE: Apply
-          GATE-->>CA: true
-        end
-        CA->>TBX: run(name, args)
-        TBX->>REPO: resolveItem / setVariationPrice / ...
-        REPO-->>TBX: Promise<Item> (or throws RepositoryError)
-        TBX-->>CA: { ok, summary, data }
-        CA-->>UA: emit(tool_result) → Activity row "done"
-        CA->>CA: history.push(tool_result block)
-      end
-    else final answer
-      CA-->>UA: (stream already emitted the text) → return
+  U->>R: { conversationId, message }
+  R->>R: hijack reply, open SSE
+  R->>L: run(message, run{emit, confirm, signal, toolbox, canWrite})
+  loop up to 12 steps (Claude) — or a single tool (offline)
+    L->>API: messages.stream(system, tools, history)
+    API-->>L: text deltas
+    L-->>U: data: {type:"text"}
+    API-->>L: finalMessage (tool_use?)
+    alt mutating tool
+      L-->>U: data: {type:"awaiting_confirmation", call}
+      L->>P: waitForConfirmation(call.id)
+      U->>R: POST /api/agent/confirm {callId, approved}
+      R->>P: resolveConfirmation → deferred resolves
     end
+    L->>TB: run(name, args)
+    TB-->>L: { ok, summary, data }
+    L-->>U: data: {type:"tool_result"}
   end
-  UA-->>User: assistant reply + activity trail
+  L-->>U: data: {type:"done"}
 ```
 
-- **System prompt** fixes the role: menu assistant for Cà phê Việt, Square is the
-  record, use tools for every read/write, keep replies mobile-short, don't ask
-  "are you sure" (the app shows the card).
-- **History** is in-memory on the `ClaudeAgent` instance. `reset()` (or a repo
-  change) clears it. Not persisted.
-- **Guard:** 12 tool-use rounds max, then a "stopped after too many steps"
-  notice.
-- **Abort:** the composer's ■ button aborts the `AbortController`; the SDK stream
-  and the loop both honour `turn.signal`.
+- **Permission**: a mutating tool checks `run.canWrite` (`req.can("catalog.write")`)
+  server-side. Staff get a `tool_result` error, no card.
+- **History**: in-memory per `conversationId` (`conversations.ts`, bounded).
+  Restart resets conversations — same as before.
+- **Cleanup**: the response closing (Stop, navigation, network) aborts the
+  Anthropic stream and denies all pending deferreds; a per-call 5-minute timeout
+  auto-denies so a never-answered card can't wedge the turn.
 
-### 5.4 `OfflineAgent` (no API key)
+### 5.3 Tool surface (`server/agent/catalogTools.ts`)
 
-Not conversational. Matches the message against ~9 regexes → one tool call →
-the **same** `CatalogToolbox` and confirmation gate → emits "Done." or the error.
-Single-shot, no history. `"help"` lists what it understands.
-
-### 5.5 Tool surface (`catalogTools.ts`)
-
-12 tools, each mapping to one or a few `CatalogRepository` calls:
-
-| Tool | Mutates | Repository call(s) |
-|---|---|---|
-| `list_menu` | — | `listItems` (+ `listCategories` to resolve a category filter) |
-| `list_categories` | — | `listCategories` |
-| `find_item` | — | `listItems({includeArchived:true})` + substring filter |
-| `create_item` | ✔ | `resolveCategoryId` → `createItem` |
-| `rename_item` | ✔ | `resolveItem` → `updateItem` |
-| `set_item_description` | ✔ | `resolveItem` → `updateItem` |
-| `set_item_category` | ✔ | `resolveItem` + `resolveCategoryId` → `updateItem` |
-| `set_price` | ✔ | `resolveItem` + `pickVariation` → `setVariationPrice` |
-| `add_variation` | ✔ | `resolveItem` → `addVariation` |
-| `archive_item` / `unarchive_item` | ✔ | `resolveItem` → `setItemArchived` |
-| `create_category` | ✔ | `createCategory` |
-
-`CatalogToolbox` also does the fuzzy resolution the model relies on:
-`resolveItem` (by id, then exact name, then unique substring — throws with the
-candidate list if ambiguous), `resolveCategoryId`, `pickVariation`, and
-`money()` (parse `4.5` → `{amount:450,currency:"USD"}`). Every dispatch is
-wrapped so a `RepositoryError` becomes `{ ok:false, summary }` for the model to
-read and explain.
+12 tools, each mapping to one or a few `CatalogRepository` calls, plus the fuzzy
+resolution the model relies on (`resolveItem` by id → exact name → unique
+substring; `resolveCategoryId`; `pickVariation`; `money()`). Unchanged from the
+in-browser version — it only ever touched a `CatalogRepository`, which is now
+`req.catalog` (the audited wrapper).
 
 ---
 
 ## 6. The Console surface
 
-### 6.1 Routes
+Route-based (`src/routes/`), rendered inside `AppShell` (capability-filtered
+sidebar, role switcher, data-source badge, the mode toggle). Screens call
+`useAsync(() => catalog.<method>(), [deps])` — a ~40-line hook
+(`{ data, loading, error, reload }`) — and `reload()` after a mutation. They
+also subscribe to `useCatalogRevision()` so a change made in chat shows up in
+the Console list without a manual refresh (§7.4).
 
-| Path | Component | Purpose | Gate |
-|---|---|---|---|
-| `/` | → redirect `/items` | | |
-| `/items` | `ItemsListPage` | Search, show-archived toggle, table (name/category/variations/price range/status) | "New item" needs `catalog.write` |
-| `/items/new` | `ItemCreatePage` | Name, description, category, ≥1 variation (name + price), modifier groups | redirects out without `catalog.write` |
-| `/items/:itemId` | `ItemDetailPage` | Details section, Variations (add/remove), Modifier-group attach/detach, archive/unarchive | edit controls hidden without `catalog.write`; read-only notice shown |
-| `/categories` | `CategoriesPage` | List, create, rename inline | create/rename need `catalog.write` |
-| `/modifier-groups` | `ModifierGroupsPage` | Read-only table (name, selection rule, options with price deltas) | — |
-| `/pricing` | `PricingPage` | One row per variation; inline price edit | redirects out without `pricing.read`; edit needs `pricing.write` |
-| `/reporting`, `/analytics`, `/orders` | `ReportingPage` / `AnalyticsPage` / `OrderHistoryPage` → `ScaffoldPage` | Navigable, honest "no data yet" empty states | — |
-| `*` | `NotFoundPage` | | |
-
-`AppShell` filters the sidebar to nav items whose `requires` capability the
-current role has (so staff never sees Pricing), renders the role switcher and the
-data-source badge, and hosts the `<ModeToggle/>` passed in from `App.tsx`.
-
-### 6.2 Data loading
-
-Screens call `useAsync(() => catalog.listItems(), [deps])` — a ~40-line hook:
-`{ data, loading, error, reload }`, cancels on unmount, re-runs on dep change or
-`reload()`. No cache. After a mutation, screens call `reload()`. Screens also
-subscribe to `useCatalogRevision()` so an edit from the *other* surface triggers
-a refetch (§7).
+| Path | Purpose |
+|---|---|
+| `/items` · `/items/new` · `/items/:id` | list / create / detail (name, description, category, image, variations, modifier groups, archive) |
+| `/categories` | list · create · rename |
+| `/modifier-groups` | read-only table |
+| `/pricing` | one row per variation, inline price edit (admin) |
+| `/reporting` · `/analytics` · `/orders` | navigable "no data yet" scaffolds |
 
 ---
 
-## 7. Shared core
+## 7. Shared core (`shared/`)
 
-### 7.1 Domain model (`src/domain/`)
+### 7.1 Domain model (`shared/domain/`)
 
 A faithful, ergonomic projection of Square's Catalog — **never richer than
-Square** (no combos/bundles, no channel/time pricing, no nested modifiers). Full
-detail in `DOMAIN.md`. Shapes:
+Square**. Full detail in `DOMAIN.md`. Shapes: `Money` (integer minor units),
+`Item` (`… imageUrl?`), `Variation` (the priced unit), `ModifierGroup`,
+`Category`, `Location`, `Role`. Helpers: `formatMoney`, `parseMoney`,
+`effectivePrice`, and the stub auth model (`can(role, capability)`,
+`userForRole`, `roleFromHeader`).
 
-- `Money { amount: integer minor units, currency }` — never a float
-- `Item { id, name, description?, categoryId?, variations[], modifierGroupIds[], archived, imageUrl? }`
-  — `imageUrl` is read-through from Square's attached `CatalogImage`; setting a
-  new one only works against the mock repo (Square needs a real file upload,
-  not a URL) — see `setItemImage` in §7.2
-- `Variation { id, itemId, name, price: Money, sku?, priceOverrides[] }` — the
-  priced sellable unit; "size" lives here
-- `ModifierGroup { id, name, required, minSelect, maxSelect, options[] }` —
-  business-level, reusable; `ModifierOption { …, priceDelta: Money }`
-- `Category { id, name }`, `Location { id, name, status }`
-- `Role = "admin" | "staff"`
-
-Helpers: `formatMoney`, `parseMoney`, `effectivePrice(variation, locationId)`.
-
-### 7.2 Repository layer (`src/repositories/`)
+### 7.2 Repository layer
 
 ```mermaid
 flowchart LR
-  subgraph IFACES["Interfaces (src/repositories/*.ts)"]
-    CR["CatalogRepository<br/>listLocations · listCategories · createCategory · renameCategory<br/>listModifierGroups · listItems · getItem<br/>createItem · updateItem · setItemArchived<br/>addVariation · updateVariation · removeVariation<br/>setVariationPrice · setItemImage"]
-    SR["SalesRepository<br/>listOrders · getSalesSummary"]
+  subgraph SHARED["shared/"]
+    CI["CatalogRepository (interface)<br/>15 methods · async · rejects with RepositoryError"]
+    SI["SalesRepository (interface)"]
   end
-  MOCKC["MockCatalogRepository"]
-  SQRC["SquareCatalogRepository"]
-  MAPX["square/mapper.ts"]
-  MOCKS["MockSalesRepository"]
-
-  MOCKC -->|implements| CR
-  SQRC -->|implements| CR
-  SQRC -->|uses| MAPX
-  MOCKS -->|implements| SR
+  subgraph CLIENT["src/repositories/"]
+    HC["HttpCatalogRepository"] -->|implements| CI
+    HS["HttpSalesRepository"] -->|implements| SI
+  end
+  subgraph SERVER["server/catalog/"]
+    MC["MockCatalogRepository"] -->|implements| CI
+    SC["SquareCatalogRepository"] -->|implements| CI
+    AC["AuditedCatalogRepository"] -->|implements + wraps| CI
+    MS["MockSalesRepository"] -->|implements| SI
+    SC -->|uses| MAP["square/mapper.ts"]
+  end
+  HC -->|"fetch /api/catalog/*"| SERVER
 ```
 
-All 15 `CatalogRepository` methods are async, return plain domain objects, and
-reject with a typed `RepositoryError` on failure.
+- `HttpCatalogRepository` — one `fetch` per method; `apiClient` maps the error
+  body back to `ValidationError` / `PermissionError` / `NotFoundError`.
+- `MockCatalogRepository` — in-memory arrays from `fixtures` (deep-cloned reads,
+  session-only writes, 180 ms simulated latency). Picks up
+  `fixtures.generated.json` if the Square export was run.
+- `SquareCatalogRepository` — retrieve → mutate tree → upsert whole ITEM
+  (Square's optimistic-concurrency model); sets the auth header itself.
+- `AuditedCatalogRepository` — built **per request** with `req.currentUser`;
+  records who/what/before→after around each mutation, passes reads through.
+  Used by the REST routes *and* the agent toolbox, so both log identically.
+- `factory.ts` picks Mock vs Square from `DATA_SOURCE` (singleton).
 
-Every method is **async and remote-call-shaped**: returns plain domain objects,
-rejects with a typed `RepositoryError` (`NotFoundError`, `ValidationError`,
-`PermissionError`) on failure. Both surfaces handle failure identically.
+### 7.3 Anti-corruption layer (`server/catalog/square/mapper.ts`)
 
-| Implementation | Reads | Writes | Notes |
-|---|---|---|---|
-| `MockCatalogRepository` | from in-memory arrays seeded from `fixtures` (cloned via `structuredClone` so callers can't mutate the store) | mutate the arrays in place | 180 ms simulated latency; `NotFoundError`/`ValidationError` on bad input; **session-only** — refresh reverts. `import.meta.glob` picks up `fixtures.generated.json` if the Square export was run. |
-| `SquareCatalogRepository` | `GET /api/square/v2/catalog/list?types=…` (paginated), filters `is_deleted` | **retrieve → mutate tree → upsert whole ITEM** (Square's optimistic-concurrency model: needs the object's `version`); `POST /catalog/object` with an `idempotency_key` | maps Square 400 → `ValidationError`, 404 → `NotFoundError`; wraps network failure with a "is the dev server running with the token?" hint |
-| `MockSalesRepository` | resolves empty | — | Reporting/orders scaffolds render against this. **No order or customer data is ever pulled** (live revenue + PII). |
+Quarantines every Square-ism — the `type` discriminator, nested `*_data`,
+`version` numbers, temp `#name` ids, `categories[]` vs legacy `category_id`,
+`modifier_list_info[].enabled`, `image_ids[]` → `CatalogImage` URL. Nothing
+outside `server/catalog/square/` imports it.
 
-`RepositoryProvider` selects `catalog` from `VITE_DATA_SOURCE` (`"square"` →
-`SquareCatalogRepository`, anything else → `MockCatalogRepository`). Moving to a
-production backend = change those constructors; nothing else moves.
+### 7.4 Cross-surface reactivity (`src/repositories/catalogRevision.ts`)
 
-### 7.3 Anti-corruption layer (`square/mapper.ts`)
+A module-level counter read through `useSyncExternalStore`. `useAgent` bumps it
+after a successful mutating tool; Console screens include `useCatalogRevision()`
+in their `useAsync` deps. The only shared *state* between the two surfaces;
+everything else flows through the API.
 
-Quarantines every Square-ism: the `type` discriminator, nested `*_data`
-payloads, `version` numbers, temp `#name` ids, `{amount,currency}` money,
-`categories[]` vs legacy `category_id`, `modifier_list_info[].enabled`,
-`selection_type` → `minSelect`/`maxSelect`. Exposes `itemFromSquare`,
-`variationFromSquare`, `categoryFromSquare`, `modifierGroupFromSquare` (Square →
-domain) and `variationToSquare`, `toSquareMoney` (domain → Square upsert
-payloads). Components and the agent never import this file.
+### 7.5 Wire contract (`shared/api.ts`)
 
-### 7.4 Cross-surface reactivity (`catalogRevision.ts`)
-
-A module-level integer + listener set, read through `useSyncExternalStore`.
-`bumpCatalogRevision()` is called after any successful mutation (by `useAgent`
-after a tool result, and by console screens after their own writes). Console
-screens include `useCatalogRevision()` in their `useAsync` deps, so a price
-changed in chat shows up in the Console list without a manual refresh — and vice
-versa. This is the only shared *state* between the two surfaces; everything else
-flows through the repository.
+`Meta`, `ApiErrorBody`, `AuditEntry`, `ToolCall`, `ToolResult`, the `AgentEvent`
+SSE union, and the `AgentChat/Confirm/Abort` request bodies. The one file both
+ends import to stay in sync.
 
 ---
 
 ## 8. Configuration & secrets
 
-`config/env.ts` is the only place browser-visible config is read. **Both
-secrets — the Square token and the Anthropic key — are read exclusively by
-`vite.config.ts` (Node, server-side) and are absent from `src/vite-env.d.ts`,
-so referencing either from client code is a type error, not just a
-convention.** Neither is ever bundled.
+`.env.local` is read **only by the backend** (`npm run dev:api` → `tsx
+--env-file`). The frontend bundle contains no configuration — it calls `/api/*`
+and reads `GET /api/meta` for the two facts it needs.
 
-| Variable | Read by | In browser bundle? | Purpose |
-|---|---|---|---|
-| `VITE_DATA_SOURCE` | `config/env.ts` | yes | `mock` (default) or `square` |
-| `VITE_AGENT_MODEL` | `config/env.ts` | yes | agent model id — not a secret |
-| `SQUARE_ACCESS_TOKEN` | **`vite.config.ts` only** (`loadEnv`) | **no** | injected into `/api/square/*` by the dev proxy |
-| `SQUARE_ENVIRONMENT` | `vite.config.ts`, `scripts/` | no | `sandbox` \| `production` → Square host |
-| `SQUARE_LOCATION_ID` | `scripts/` (optional) | no | pin one location |
-| `ANTHROPIC_API_KEY` | **`vite.config.ts` only** (`loadEnv`) | **no** | injected into `/api/anthropic/*` by the dev proxy |
+| Variable | Read by | Purpose |
+|---|---|---|
+| `API_PORT` | backend + `vite.config.ts` | port the backend listens on / Vite proxies to (default 3001) |
+| `DATA_SOURCE` | backend | `mock` (default) or `square` |
+| `SQUARE_ACCESS_TOKEN` | **backend only** | Square API auth — set by `SquareCatalogRepository` |
+| `SQUARE_ENVIRONMENT` | backend, `scripts/` | `sandbox` \| `production` → Square host |
+| `SQUARE_LOCATION_ID` | `scripts/` (optional) | pin one location |
+| `ANTHROPIC_API_KEY` | **backend only** | agent LLM; empty → offline parser |
+| `AGENT_MODEL` | backend | agent model id |
+| `SQLITE_PATH` | backend | audit-log file (created on first run) |
 
-The client learns *whether* the agent is usable — never the key — via
-`GET /api/anthropic-status → { configured: boolean }`, a tiny middleware
-registered in `vite.config.ts`. `useAnthropicAvailability()`
-(`config/agentAvailability.ts`) fetches it once (module-level cache shared by
-`useAgent` and the settings panel) and resolves `"checking" → "available" |
-"unavailable"`.
+**Dev flow:** `npm run dev` runs `dev:api` (`tsx watch`) + `dev:web` (Vite)
+concurrently; Vite proxies `/api` → `http://localhost:$API_PORT`. There is no
+secret-injecting proxy any more — the backend *is* the boundary.
 
-### How both keys stay server-side
-
-Same pattern for both external calls: the browser never sends an auth header
-itself, the dev-server proxy adds it.
-
-```mermaid
-sequenceDiagram
-  participant B as Browser
-  participant V as Vite dev server (vite.config.ts proxies)
-  participant Sq as Square API
-  participant An as Anthropic API
-
-  B->>V: fetch /api/square/v2/catalog/list?types=ITEM
-  Note over V: add Authorization: Bearer SQUARE_ACCESS_TOKEN<br/>add Square-Version: 2025-01-23
-  V->>Sq: GET connect.squareup(sandbox).com/v2/catalog/list?types=ITEM
-  Sq-->>V: 200 { objects: [...] }
-  V-->>B: 200 { objects: [...] }
-
-  B->>V: POST /api/anthropic/v1/messages (NO x-api-key header)
-  Note over V: add x-api-key: ANTHROPIC_API_KEY
-  V->>An: POST api.anthropic.com/v1/messages
-  An-->>V: 200 (streamed SSE)
-  V-->>B: 200 (streamed SSE, passed through)
-```
-
-For Anthropic, `ClaudeAgent` constructs the SDK with
-`baseURL: "/api/anthropic"` and `defaultHeaders: { "X-Api-Key": null }` — the
-`null` tells the SDK the header is *intentionally* omitted (a documented SDK
-mechanism), so it sends the request with no key rather than throwing "missing
-API key". Streaming passes through the proxy untouched.
-
-**Production migration:** replace both Vite dev proxies with a real backend
-(serverless function or otherwise) doing the same header injection — plus, by
-then, real auth and an audit log. `SquareCatalogRepository` and `ClaudeAgent`
-keep calling `/api/square/*` and `/api/anthropic/*` — no app-code change.
+**Production:** `npm run build` (client → `dist/`) + `npm run build:api`
+(esbuild bundle → `server-dist/`); serve the static client and run the Node
+process behind it. A deploy target and real auth (replacing the `X-Role` stub)
+are follow-ups.
 
 ---
 
 ## 9. Auth & permissions
 
-Stubbed, no real identity. `AuthProvider` holds a `Role` (`admin` | `staff`),
-flipped by the "View as" control in both shells, persisted to `sessionStorage`.
+Stubbed, no real identity. The client's "View as" switcher sets a `Role`, sent
+as the `X-Role` header on every request; the backend's `onRequest` hook takes
+that as the actor and enforces `can(role, capability)`:
 
 | Capability | admin | staff |
 |---|---|---|
-| `catalog.write` | ✔ | — |
-| `pricing.read` | ✔ | — |
-| `pricing.write` | ✔ | — |
+| `catalog.write` · `pricing.read` · `pricing.write` | ✔ | — |
 
-`can(capability)` is the single enforcement point:
+- **Console** hides nav items / edit controls and redirects unauthorised routes;
+  the backend also returns 403.
+- **Assistant**: mutating tools are rejected server-side for staff (a
+  `tool_result` error, no confirmation card).
 
-- **Console:** hides nav items (`AppShell` filters by `requires`), hides/disables
-  edit controls, redirects unauthorised routes (`/pricing`, `/items/new`).
-- **Assistant:** `useAgent`'s confirmation gate auto-denies every mutating tool
-  when `!can("catalog.write")`, and the intro tells staff changes are disabled.
-
-Real auth (Square OAuth or Clerk) replaces the provider internals in a later
-phase; `can()` and every call site stay.
+The capability model lives in `shared/domain/auth.ts` so both ends agree.
 
 ---
 
@@ -431,17 +315,16 @@ phase; `can()` and every call site stay.
 
 | Area | State |
 |---|---|
-| **Persistence of mock writes** | none — refresh reverts to fixtures (intentional for now) |
-| **Reporting / analytics / orders** | navigable scaffolds only; no data pulled |
-| **Refunds, inventory, staff/shifts, customers/loyalty** | out of scope |
-| **Modifier group editing** | read-only in the Console; the agent can attach/detach groups but not define new ones |
-| **Location switcher & per-location price overrides** | model supports `locationId` + `priceOverrides`; no UI |
-| **Item image uploads against Square** | reading an existing Square image works; setting a new one only works against the mock repo (URL field) — Square requires a real file upload via its Images API, not implemented |
-| **Audit log** | none — no "who changed what" trail on writes |
-| **Auth** | stubbed; no real identity or security |
-| **Tests** | none |
-| **Square writes** | implemented against the dev proxy; not exercised against a real backend or with real concurrency |
-| **Theme** | light only (keeps the two surfaces visually coherent) |
+| Persistence of mock writes | none — restart the backend and it reverts to fixtures |
+| Catalog persistence | Square is the source of truth; the backend caches nothing |
+| Reporting / analytics / orders | navigable scaffolds; no order data pulled |
+| Modifier-group editing | read-only in the Console; the agent attaches/detaches but doesn't define groups |
+| Item image uploads against Square | reading an existing image works; setting one only works against the mock (Square needs a file upload, not a URL) |
+| Audit log | append-only SQLite; not yet surfaced in the UI, no retention policy |
+| Auth | stubbed `X-Role` header; no real identity |
+| Conversation history | in-memory, lost on backend restart |
+| Tests | none |
+| Deploy | `build` / `build:api` produce artifacts; no target wired |
 
 ---
 
@@ -451,101 +334,78 @@ phase; `can()` and every call site stay.
 flowchart LR
   subgraph NOW["Now — this branch"]
     direction TB
-    N1["Two surfaces, one toggle"]
-    N2["Mock repo (default) or SquareCatalogRepository"]
-    N3["Vite dev proxy holds the Square token"]
+    N1["React SPA + Fastify backend"]
+    N2["Backend owns catalog + agent + audit log"]
+    N3["Mock or Square, per DATA_SOURCE"]
     N1 --> N2 --> N3
   end
-  subgraph NEXT["Backend proxy"]
+  subgraph NEXT["Harden"]
     direction TB
-    X1["Two surfaces (unchanged)"]
-    X2["SquareCatalogRepository → real serverless proxy"]
-    X3["Proxy holds Square token + Anthropic key"]
+    X1["Real auth (Square OAuth / Clerk) replaces X-Role"]
+    X2["Audit log → Postgres; surfaced as an Activity view"]
+    X3["Deploy target + secrets management"]
     X1 --> X2 --> X3
   end
-  subgraph HARDEN["Writes + auth + audit"]
-    direction TB
-    H1["Real auth (Square OAuth / Clerk)"]
-    H2["Immutable audit log on every mutation"]
-    H3["Agent write-tools hardened behind it"]
-    H1 --> H2 --> H3
-  end
-  NOW --> NEXT --> HARDEN
+  NOW --> NEXT
 ```
 
-The original `PLAN.md` sequenced the agent as P4 (after a conventional-first
-build). This branch built it early, against the mock/Square repository; it
-hardens as the backend lands. Only the repository implementation and its backing
-service change across phases — the domain model, both surfaces, the agent tools,
-and the `CatalogRepository` interface stay stable.
+The `CatalogRepository` interface, the domain model, both surfaces, and the
+agent tools stay stable across phases — only the repository implementation, the
+audit-log backend, and the auth internals change.
 
 ---
 
 ## 12. Directory map
 
 ```
-index.html                       Google Fonts (Lora, Be Vietnam Pro), theme-color, root
-vite.config.ts                   React + Tailwind plugins; /api/square dev proxy (token injection)
-.env.example                     documented env template → copy to .env.local
+shared/                          imported by both sides via the `shared/*` alias
+  domain/                        catalog model + stub auth (see DOMAIN.md)
+  CatalogRepository.ts           the interface both sides implement
+  SalesRepository.ts
+  errors.ts                      RepositoryError family + ErrorCode + errorFromWire()
+  api.ts                         REST + agent SSE wire contract
 
-src/
-  main.tsx                       React root (StrictMode)
-  App.tsx                        provider tree + Assistant/Console surface switch
-  index.css                      design tokens (Phin POS palette) + assistant-surface CSS + shared button vocabulary
-  vite-env.d.ts                  typed import.meta.env
-
-  config/
-    env.ts                       browser-visible config (dataSource, agentModel, proxy base paths) — NO secrets
-    agentAvailability.ts         asks /api/anthropic-status; never sees the key itself
-
-  domain/                        internal catalog model (faithful Square projection — see DOMAIN.md)
-    money.ts  catalog.ts  location.ts  auth.ts  index.ts
-
-  repositories/
-    CatalogRepository.ts         the interface both surfaces depend on
-    SalesRepository.ts           reporting/orders interface (mock-only for now)
-    errors.ts                    RepositoryError · NotFoundError · ValidationError · PermissionError
-    RepositoryContext.tsx        picks Mock vs Square from VITE_DATA_SOURCE
-    catalogRevision.ts           cross-surface "catalog changed" counter
-    mock/
-      fixtures.ts                hand-authored Vietnamese menu; loads fixtures.generated.json if present
-      MockCatalogRepository.ts   in-memory, cloned reads, session-only writes, simulated latency
-      MockSalesRepository.ts     resolves empty
-    square/
-      SquareCatalogRepository.ts fetch → /api/square; retrieve-mutate-upsert writes
-      mapper.ts                  anti-corruption layer (Square CatalogObject ⇄ domain)
-
+server/                          Fastify backend — run by `tsx watch` in dev
+  index.ts                       bootstrap: content-type parser, auth, error handler, routes
+  config.ts                      env (DATA_SOURCE + both secrets) — read once
+  auth.ts                        X-Role onRequest hook → req.currentUser / can() / catalog
+  catalog/
+    factory.ts                   Mock vs Square from DATA_SOURCE
+    AuditedCatalogRepository.ts  per-request decorator: logs every mutation
+    mock/                        MockCatalog/SalesRepository + fixtures
+    square/                      SquareCatalogRepository + mapper.ts
   agent/
-    catalogTools.ts              12 tool specs + CatalogToolbox dispatch (1 tool = 1..n repo calls)
-    ClaudeAgent.ts               Anthropic streaming tool-use loop; pauses on mutating tools
-    OfflineAgent.ts              no-key fallback: regex intents → same toolbox
-    useAgent.ts                  hook: transcript state + confirmation gate + revision bump
-    types.ts                     Agent · AgentTurn · AgentEvent · ToolCall
+    catalogTools.ts              12 tool specs + CatalogToolbox
+    loop.ts                      Claude tool-use loop, streams AgentEvents
+    offline.ts                   regex fallback (no ANTHROPIC_API_KEY)
+    run.ts                       shared per-tool-call path (announce → confirm → execute)
+    conversations.ts             in-memory history, bounded
+    pending.ts                   confirm round-trip (deferred map)
+  audit/
+    AuditLog.ts                  interface { record, list }
+    SqliteAuditLog.ts            better-sqlite3 impl; one append-only table
+  routes/                        catalog · sales · agent · meta · audit
 
-  features/
-    assistant/AssistantView.tsx  mobile chat shell (header, data badge, settings panel, mode toggle)
-    chat/ChatView.tsx            transcript, activity rows, ConfirmCard, composer
+src/                             React SPA — talks only to /api/*
+  App.tsx                        provider tree + Assistant/Console switch
+  repositories/
+    apiClient.ts                 fetch wrapper: X-Role header + typed errors
+    HttpCatalogRepository.ts     one fetch per CatalogRepository method
+    HttpSalesRepository.ts
+    RepositoryContext.tsx        builds the Http* pair
+    catalogRevision.ts           cross-surface "catalog changed" counter
+  meta/MetaContext.tsx           GET /api/meta once
+  agent/useAgent.ts              SSE client for /api/agent/chat + confirm/abort
+  auth/AuthContext.tsx           stub role → sessionStorage + apiClient
+  settings/SettingsContext.tsx   mode + requireConfirmation → localStorage
+  location/LocationContext.tsx   current location (Console-only)
+  features/assistant/ · features/chat/   the mobile chat shell + transcript
+  layout/AppShell.tsx            Console shell
+  routes/                        Console pages (catalog / pricing / reports)
+  components/                    ModeToggle · ui.tsx · ItemThumbnail · PhinMark
+  lib/                           useAsync · placeholderImage
 
-  auth/AuthContext.tsx           stubbed admin/staff role + can(capability)
-  settings/SettingsContext.tsx   mode + requireConfirmation, persisted to localStorage
-  location/LocationContext.tsx   current location (console-only)
-  i18n/copy.ts                   t() seam — English only
-  lib/useAsync.ts                minimal async-data hook (no cache)
-  lib/placeholderImage.ts        deterministic initials-badge SVG data URI for items with no image
-
-  components/
-    ModeToggle.tsx               Assistant ⟷ Console switch (both shells)
-    ui.tsx                       Console primitives (Button, Card, Field, TextInput, Badge, Spinner, EmptyState, ErrorState…)
-    ItemThumbnail.tsx            renders item.imageUrl, or the generated placeholder
-    PhinMark.tsx                 brand mark SVG
-
-  layout/AppShell.tsx            Console shell — sidebar nav (capability-filtered), role switcher, data badge
-  routes/
-    catalog/                     ItemsListPage · ItemDetailPage · ItemCreatePage · CategoriesPage · ModifierGroupsPage · priceRange.ts
-    pricing/PricingPage.tsx      per-variation price editing (admin only)
-    reports/                     ReportingPage · AnalyticsPage · OrderHistoryPage → ScaffoldPage
-    NotFoundPage.tsx
-
-scripts/
-  export-square-catalog.mjs      one-time local pull of real catalog + locations → fixtures.generated.json
+scripts/export-square-catalog.mjs   one-time pull → server/catalog/mock/fixtures.generated.json
+vite.config.ts                      React + Tailwind + a single /api proxy
+tsconfig.{app,server,node}.json     three projects; `shared/*` path alias in app + server
 ```
