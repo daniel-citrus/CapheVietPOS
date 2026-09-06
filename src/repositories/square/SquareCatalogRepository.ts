@@ -4,7 +4,7 @@ import type {
   Location,
   ModifierGroup,
   Money,
-} from "../../domain";
+} from "shared/domain";
 import { squareApiBase } from "../../config/env";
 import type {
   CatalogRepository,
@@ -13,7 +13,7 @@ import type {
   UpdateItemPatch,
   UpdateVariationPatch,
 } from "../CatalogRepository";
-import { NotFoundError, RepositoryError, ValidationError } from "../errors";
+import { NotFoundError, RepositoryError, ValidationError } from "shared/errors";
 import {
   categoryFromSquare,
   itemFromSquare,

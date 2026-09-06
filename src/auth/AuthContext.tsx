@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { CurrentUser, Role } from "../domain";
+import type { CurrentUser, Role } from "shared/domain";
 
 /**
  * P1 auth is stubbed. There is no real identity and no security — the role is a

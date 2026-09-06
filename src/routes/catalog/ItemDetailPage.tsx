@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import type { Item } from "../../domain";
-import { formatMoney } from "../../domain";
+import type { Item } from "shared/domain";
+import { formatMoney } from "shared/domain";
 import { useAuth } from "../../auth/AuthContext";
 import { useRepositories } from "../../repositories/RepositoryContext";
 import { useAsync } from "../../lib/useAsync";

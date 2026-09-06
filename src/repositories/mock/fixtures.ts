@@ -3,7 +3,7 @@ import type {
   Item,
   Location,
   ModifierGroup,
-} from "../../domain";
+} from "shared/domain";
 
 /**
  * Fixtures for P1.

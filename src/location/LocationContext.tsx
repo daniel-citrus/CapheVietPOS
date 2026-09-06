@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from "react";
-import type { Location } from "../domain";
+import type { Location } from "shared/domain";
 import { useAsync } from "../lib/useAsync";
 import { useRepositories } from "../repositories/RepositoryContext";
 import { Spinner } from "../components/ui";

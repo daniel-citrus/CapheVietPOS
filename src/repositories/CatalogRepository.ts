@@ -5,7 +5,7 @@ import type {
   ModifierGroup,
   Money,
   Variation,
-} from "../domain";
+} from "shared/domain";
 
 /**
  * All data access goes through this interface. Components never import fixtures

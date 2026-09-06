@@ -1,7 +1,7 @@
-import type { Item } from "../domain";
-import { formatMoney, parseMoney } from "../domain";
+import type { Item } from "shared/domain";
+import { formatMoney, parseMoney } from "shared/domain";
 import type { CatalogRepository } from "../repositories/CatalogRepository";
-import { RepositoryError } from "../repositories/errors";
+import { RepositoryError } from "shared/errors";
 
 /**
  * The agent's tool surface. Each tool maps to one or a few CatalogRepository

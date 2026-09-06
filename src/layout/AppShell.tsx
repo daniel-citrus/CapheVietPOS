@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import type { Role } from "../domain";
+import type { Role } from "shared/domain";
 import { useAuth, type Capability } from "../auth/AuthContext";
 import { PhinMark } from "../components/PhinMark";
 import { useCurrentLocation } from "../location/LocationContext";

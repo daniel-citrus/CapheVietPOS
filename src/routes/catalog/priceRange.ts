@@ -1,5 +1,5 @@
-import type { Item } from "../../domain";
-import { formatMoney } from "../../domain";
+import type { Item } from "shared/domain";
+import { formatMoney } from "shared/domain";
 
 /** "$4.50" or "$4.50 – $5.25" across an item's variations. */
 export function priceRange(item: Item): string {
