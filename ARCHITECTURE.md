@@ -71,8 +71,8 @@ flowchart TD
 
   PORT["MenuStore (shared port)"]
   PORT --> SEL{"DATA_SOURCE"}
-  SEL -->|"mock (default)"| MEM["InMemoryMenuStore<br/>in-memory fixtures"]
-  SEL -->|"square"| SQ["SquareMenuStore<br/>+ anti-corruption mapper"]
+  SEL -->|"mock (default)"| MEM["InMemoryMenuAdapter<br/>in-memory fixtures"]
+  SEL -->|"square"| SQ["SquareMenuAdapter<br/>+ anti-corruption mapper"]
 
   SQ -->|"token server-side"| SQUARE["Square Catalog API"]
   AGENT -->|"key server-side"| ANTHROPIC["Anthropic API"]
@@ -227,29 +227,30 @@ flowchart LR
     MA --> CL
   end
   subgraph SERVER["server/menu/"]
-    MEM["InMemoryMenuStore"] -->|implements| PORT
-    SQ["SquareMenuStore"] -->|implements| PORT
+    MEM["InMemoryMenuAdapter"] -->|implements| PORT
+    SQ["SquareMenuAdapter"] -->|implements| PORT
     AUD["AuditedMenuStore"] -->|"implements + wraps"| PORT
-    MEMS["InMemorySalesStore"] -->|implements| SS
+    MEMS["InMemorySalesAdapter"] -->|implements| SS
     SQ -->|uses| MAP["square/mapper.ts"]
   end
   CL -->|"fetch /api/menu/*"| SERVER
 ```
 
 The **port** is `MenuStore` (`shared/MenuStore.ts`): 15 async methods returning
-domain objects, rejecting with `RepositoryError`. Server-side it has three
-implementations; the frontend does **not** implement it.
+domain objects, rejecting with `RepositoryError`. Server-side it has two
+**adapters** and one **decorator**; the frontend does **not** implement it.
 
 - **Client** — `menuApi` (`src/api/menu.ts`) is a flat object of 15 functions,
   one `fetch` to `/api/menu/*` each, no logic. `client.ts` (`apiFetch`) attaches
   `X-Role` and maps an error body back to `ValidationError` / `PermissionError` /
   `NotFoundError`. `menuApi`'s method shapes are checked against the port's input
   types, which it imports from `shared/MenuStore.ts`.
-- **`InMemoryMenuStore`** (adapter) — in-memory arrays from `fixtures`
+- **`InMemoryMenuAdapter`** (adapter) — in-memory arrays from `fixtures`
   (deep-cloned reads, session-only writes, 180 ms simulated latency). Picks up
   `fixtures.generated.json` if the Square export was run.
-- **`SquareMenuStore`** (adapter) — retrieve → mutate tree → upsert whole ITEM
-  (Square's optimistic-concurrency model); sets the auth header itself.
+- **`SquareMenuAdapter`** (adapter) — retrieve → mutate tree → upsert whole ITEM
+  (Square's optimistic-concurrency model); sets the auth header itself. Uses
+  `square/mapper.ts` for all shape translation (§7.3).
 - **`AuditedMenuStore`** (decorator) — built **per request** with
   `req.currentUser`; records who/what/before→after around each mutation, passes
   reads through. Wraps whichever adapter `factory.ts` chose, and is used by the
@@ -301,7 +302,7 @@ and reads `GET /api/meta` for the two facts it needs.
 |---|---|---|
 | `API_PORT` | backend + `vite.config.ts` | port the backend listens on / Vite proxies to (default 3001) |
 | `DATA_SOURCE` | backend | `mock` (default) or `square` |
-| `SQUARE_ACCESS_TOKEN` | **backend only** | Square API auth — set by `SquareMenuStore` |
+| `SQUARE_ACCESS_TOKEN` | **backend only** | Square API auth — set by `SquareMenuAdapter` |
 | `SQUARE_ENVIRONMENT` | backend, `scripts/` | `sandbox` \| `production` → Square host |
 | `SQUARE_LOCATION_ID` | `scripts/` (optional) | pin one location |
 | `ANTHROPIC_API_KEY` | **backend only** | agent LLM; empty → offline parser |
@@ -399,8 +400,8 @@ server/                          Fastify backend — run by `tsx watch` in dev
   menu/
     factory.ts                   in-memory vs Square adapter from DATA_SOURCE
     AuditedMenuStore.ts          per-request decorator: logs every mutation
-    memory/                      InMemoryMenuStore + InMemorySalesStore + fixtures
-    square/                      SquareMenuStore + mapper.ts
+    memory/                      InMemoryMenuAdapter + InMemorySalesAdapter + fixtures
+    square/                      SquareMenuAdapter + mapper.ts
   agent/
     menuTools.ts                 12 tool specs + MenuToolbox
     loop.ts                      Claude tool-use loop, streams AgentEvents
@@ -411,7 +412,7 @@ server/                          Fastify backend — run by `tsx watch` in dev
   audit/
     AuditLog.ts                  interface { record, list }
     SqliteAuditLog.ts            better-sqlite3 impl; one append-only table
-  routes/                        menu · sales · agent · meta · audit
+  routes/                        one Fastify router per area — menuRouter · salesRouter · agentRouter · metaRouter · auditRouter
 
 src/                             React SPA — talks only to /api/*
   App.tsx                        provider tree + Assistant/Console switch

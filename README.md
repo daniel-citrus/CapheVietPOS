@@ -56,7 +56,7 @@ call `/api/*`, so the client doesn't change.
 
 `npm run export:catalog` pulls the real menu + locations from Square once
 (using `SQUARE_ACCESS_TOKEN` from `.env.local`) and writes
-`server/menu/memory/fixtures.generated.json`, which `InMemoryMenuStore` picks
+`server/menu/memory/fixtures.generated.json`, which `InMemoryMenuAdapter` picks
 up automatically. Orders and customers are never pulled.
 
 ## Layout

@@ -26,11 +26,11 @@ let idCounter = 1000;
 const nextId = (prefix: string) => `${prefix}-${++idCounter}`;
 
 /**
- * In-memory menu store for P1. Seeded from fixtures; mutations live only for the
- * session (a refresh reverts to fixtures — this is intentional per PLAN.md).
- * Returned objects are always deep-cloned so callers cannot mutate the store.
+ * In-memory `MenuStore` adapter for P1. Seeded from fixtures; mutations live only
+ * for the session (a refresh reverts to fixtures — this is intentional per
+ * PLAN.md). Returned objects are always deep-cloned so callers cannot mutate it.
  */
-export class InMemoryMenuStore implements MenuStore {
+export class InMemoryMenuAdapter implements MenuStore {
   private locations: Location[];
   private categories: Category[];
   private modifierGroups: ModifierGroup[];

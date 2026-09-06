@@ -5,7 +5,7 @@ import type { Order, SalesStore, SalesSummary } from "shared/SalesStore";
  * resolves empty. The reporting and order-history screens render "no data yet"
  * against this. Real implementation arrives in P2 alongside the backend proxy.
  */
-export class InMemorySalesStore implements SalesStore {
+export class InMemorySalesAdapter implements SalesStore {
   async listOrders(): Promise<Order[]> {
     return [];
   }

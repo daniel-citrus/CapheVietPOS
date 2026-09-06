@@ -96,7 +96,7 @@ export function variationFromSquare(obj: SquareCatalogObject): Variation {
 /**
  * @param imagesById Map of IMAGE catalog object id → hosted URL, resolved by
  * the caller (a list of IMAGE objects fetched or included alongside this
- * item — see SquareMenuStore). Omit if images weren't fetched.
+ * item — see SquareMenuAdapter). Omit if images weren't fetched.
  */
 export function itemFromSquare(
   obj: SquareCatalogObject,

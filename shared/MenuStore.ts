@@ -9,7 +9,7 @@ import type {
 
 /**
  * The port for all menu data access. Server-side it is implemented by
- * `InMemoryMenuStore` (fixtures) or `SquareMenuStore` (the Square API), chosen
+ * `InMemoryMenuAdapter` (fixtures) or `SquareMenuAdapter` (the Square API), chosen
  * by `DATA_SOURCE` and wrapped per-request in `AuditedMenuStore`. The frontend
  * does not implement it — it calls the `/api/menu/*` endpoints via `menuApi`
  * (`src/api/menu.ts`), whose method shapes mirror this interface.
@@ -59,8 +59,8 @@ export interface MenuStore {
    * Kept as its own method — like setVariationPrice — because it maps to a
    * real capability, not general item fields. Square itself has no "set by
    * URL" operation (only its Images upload API), so implementations may
-   * legitimately reject this; see InMemoryMenuStore vs
-   * SquareMenuStore.
+   * legitimately reject this; see InMemoryMenuAdapter vs
+   * SquareMenuAdapter.
    */
   setItemImage(itemId: string, imageUrl: string | null): Promise<Item>;
 }

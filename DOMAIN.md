@@ -4,7 +4,7 @@ _The internal domain model is a faithful, ergonomic projection of Square's Catal
 
 The model is consumed by:
 - the Console UI and the `menuApi` client — one `fetch` per `/api/menu/*` endpoint
-- the backend's `MenuStore` port → `InMemoryMenuStore` or `SquareMenuStore` (the latter via the anti-corruption / mapping layer)
+- the backend's `MenuStore` port → `InMemoryMenuAdapter` or `SquareMenuAdapter` (the latter via the anti-corruption / mapping layer)
 - the agent — each tool maps to one or a few `MenuStore` methods operating on these types
 
 ## Anti-corruption layer

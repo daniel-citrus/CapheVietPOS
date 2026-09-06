@@ -31,7 +31,7 @@ import {
  * Writes retrieve the current object first (for its `version`), mutate the
  * tree, and upsert the whole item — Square's optimistic-concurrency model.
  */
-export class SquareMenuStore implements MenuStore {
+export class SquareMenuAdapter implements MenuStore {
   private async request<T>(
     path: string,
     init?: RequestInit,

@@ -19,7 +19,7 @@ import {
 } from "../agent/pending";
 import type { AgentRun } from "../agent/run";
 
-export const agentRoutes: FastifyPluginAsync = async (app) => {
+export const agentRouter: FastifyPluginAsync = async (app) => {
   /** Stream a turn. SSE: one JSON `AgentEvent` per `data:` line. */
   app.post<{ Body: AgentChatRequest }>("/chat", async (req, reply) => {
     const { conversationId, message, autoConfirm } = req.body ?? {};

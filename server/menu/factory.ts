@@ -1,9 +1,9 @@
 import { config } from "../config";
 import type { MenuStore } from "shared/MenuStore";
 import type { SalesStore } from "shared/SalesStore";
-import { InMemoryMenuStore } from "./memory/InMemoryMenuStore";
-import { InMemorySalesStore } from "./memory/InMemorySalesStore";
-import { SquareMenuStore } from "./square/SquareMenuStore";
+import { InMemoryMenuAdapter } from "./memory/InMemoryMenuAdapter";
+import { InMemorySalesAdapter } from "./memory/InMemorySalesAdapter";
+import { SquareMenuAdapter } from "./square/SquareMenuAdapter";
 
 /**
  * The one place the in-memory vs Square adapter is chosen, from `DATA_SOURCE`.
@@ -12,7 +12,7 @@ import { SquareMenuStore } from "./square/SquareMenuStore";
  */
 export const menuStore: MenuStore =
   config.dataSource === "square"
-    ? new SquareMenuStore()
-    : new InMemoryMenuStore();
+    ? new SquareMenuAdapter()
+    : new InMemoryMenuAdapter();
 
-export const salesStore: SalesStore = new InMemorySalesStore();
+export const salesStore: SalesStore = new InMemorySalesAdapter();

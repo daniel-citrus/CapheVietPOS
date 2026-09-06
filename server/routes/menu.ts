@@ -22,7 +22,7 @@ interface VariationParams {
  * `RepositoryError`s which the app-level error handler turns into
  * `{ error: { code, message } }` with the right status.
  */
-export const menuRoutes: FastifyPluginAsync = async (app) => {
+export const menuRouter: FastifyPluginAsync = async (app) => {
   // --- locations ------------------------------------------------------
   app.get("/locations", (req) => req.menu.listLocations());
 
