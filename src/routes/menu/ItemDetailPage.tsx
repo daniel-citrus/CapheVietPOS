@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import type { Item } from "shared/domain";
 import { formatMoney } from "shared/domain";
 import { useAuth } from "../../auth/AuthContext";
-import { useRepositories } from "../../repositories/RepositoryContext";
+import { menuApi } from "../../api/menu";
 import { useMeta } from "../../meta/MetaContext";
 import { useAsync } from "../../lib/useAsync";
 import { ItemThumbnail } from "../../components/ItemThumbnail";
@@ -23,21 +23,20 @@ import { t } from "../../i18n/copy";
 
 export function ItemDetailPage() {
   const { itemId = "" } = useParams();
-  const { catalog } = useRepositories();
   const { dataSource } = useMeta();
   const { can } = useAuth();
   const navigate = useNavigate();
 
-  const item = useAsync(() => catalog.getItem(itemId), [itemId]);
-  const categories = useAsync(() => catalog.listCategories(), []);
-  const modifierGroups = useAsync(() => catalog.listModifierGroups(), []);
+  const item = useAsync(() => menuApi.getItem(itemId), [itemId]);
+  const categories = useAsync(() => menuApi.listCategories(), []);
+  const modifierGroups = useAsync(() => menuApi.listModifierGroups(), []);
 
   if (item.loading) return <Spinner label={t("common.loading")} />;
   if (item.error || !item.data) {
     return <ErrorState message={item.error?.message ?? t("error.generic")} onRetry={item.reload} />;
   }
 
-  const writable = can("catalog.write");
+  const writable = can("menu.write");
 
   return (
     <div className="max-w-3xl">
@@ -52,7 +51,7 @@ export function ItemDetailPage() {
               <Button
                 variant={item.data.archived ? "secondary" : "danger"}
                 onClick={async () => {
-                  await catalog.setItemArchived(item.data!.id, !item.data!.archived);
+                  await menuApi.setItemArchived(item.data!.id, !item.data!.archived);
                   item.reload();
                 }}
               >
@@ -122,11 +121,10 @@ function ImageSection({
 }: {
   item: Item;
   writable: boolean;
-  /** false when the catalog source is Square — see setItemImage. */
+  /** false when the menu source is Square — see setItemImage. */
   canEdit: boolean;
   onSaved: () => void;
 }) {
-  const { catalog } = useRepositories();
   const [url, setUrl] = useState(item.imageUrl ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
@@ -139,7 +137,7 @@ function ImageSection({
     setSaving(true);
     setError(undefined);
     try {
-      await catalog.setItemImage(item.id, url.trim() || null);
+      await menuApi.setItemImage(item.id, url.trim() || null);
       onSaved();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error.generic"));
@@ -197,7 +195,6 @@ function DetailsSection({
   writable: boolean;
   onSaved: () => void;
 }) {
-  const { catalog } = useRepositories();
   const [name, setName] = useState(item.name);
   const [description, setDescription] = useState(item.description ?? "");
   const [categoryId, setCategoryId] = useState(item.categoryId ?? "");
@@ -219,7 +216,7 @@ function DetailsSection({
     setSaving(true);
     setError(undefined);
     try {
-      await catalog.updateItem(item.id, {
+      await menuApi.updateItem(item.id, {
         name,
         description,
         categoryId: categoryId || null,
@@ -288,7 +285,6 @@ function VariationsSection({
   writable: boolean;
   onChanged: () => void;
 }) {
-  const { catalog } = useRepositories();
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
   const [error, setError] = useState<string>();
@@ -296,7 +292,7 @@ function VariationsSection({
   async function addVariation() {
     setError(undefined);
     try {
-      await catalog.addVariation(item.id, {
+      await menuApi.addVariation(item.id, {
         name: newName,
         price: { amount: 0, currency: item.variations[0]?.price.currency ?? "USD" },
       });
@@ -311,7 +307,7 @@ function VariationsSection({
   async function removeVariation(variationId: string) {
     setError(undefined);
     try {
-      await catalog.removeVariation(item.id, variationId);
+      await menuApi.removeVariation(item.id, variationId);
       onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : t("error.generic"));
@@ -389,7 +385,6 @@ function ModifierGroupsSection({
   writable: boolean;
   onSaved: () => void;
 }) {
-  const { catalog } = useRepositories();
   const [selected, setSelected] = useState<string[]>(item.modifierGroupIds);
   const [saving, setSaving] = useState(false);
 
@@ -408,7 +403,7 @@ function ModifierGroupsSection({
   async function save() {
     setSaving(true);
     try {
-      await catalog.updateItem(item.id, { modifierGroupIds: selected });
+      await menuApi.updateItem(item.id, { modifierGroupIds: selected });
       onSaved();
     } finally {
       setSaving(false);

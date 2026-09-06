@@ -3,9 +3,9 @@
 _The internal domain model is a faithful, ergonomic projection of Square's Catalog capabilities. **It must never express anything Square cannot.** No combos/bundles (Square Catalog has no such object). Money is integer minor units + currency code._
 
 The model is consumed by:
-- P1 conventional admin UI (via `MockRepository`)
-- P2+ `HttpRepository` → backend proxy → Square (via an anti-corruption / mapping layer)
-- P4 agent — each agent tool maps to one repository method operating on these types
+- the Console UI and the `menuApi` client — one `fetch` per `/api/menu/*` endpoint
+- the backend's `MenuStore` port → `InMemoryMenuStore` or `SquareMenuStore` (the latter via the anti-corruption / mapping layer)
+- the agent — each tool maps to one or a few `MenuStore` methods operating on these types
 
 ## Anti-corruption layer
 
@@ -111,7 +111,7 @@ Role = "admin" | "staff"
 - **admin** — full access to all screens and mutations
 - **staff** — view-only; cannot reach pricing, cannot perform any create/edit/archive action
 
-Carried on the repository call context (`currentUser`) so it can feed the P3 audit trail.
+Carried on the request context (`req.currentUser`) so `AuditedMenuStore` can feed the audit trail.
 
 ## Not modeled (and why)
 

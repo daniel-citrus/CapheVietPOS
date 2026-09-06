@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { parseMoney } from "shared/domain";
 import { useAuth } from "../../auth/AuthContext";
-import { useRepositories } from "../../repositories/RepositoryContext";
+import { menuApi } from "../../api/menu";
 import { useAsync } from "../../lib/useAsync";
 import {
   Button,
@@ -21,12 +21,11 @@ interface DraftVariation {
 }
 
 export function ItemCreatePage() {
-  const { catalog } = useRepositories();
   const { can } = useAuth();
   const navigate = useNavigate();
 
-  const categories = useAsync(() => catalog.listCategories(), []);
-  const modifierGroups = useAsync(() => catalog.listModifierGroups(), []);
+  const categories = useAsync(() => menuApi.listCategories(), []);
+  const modifierGroups = useAsync(() => menuApi.listModifierGroups(), []);
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -38,7 +37,7 @@ export function ItemCreatePage() {
   const [error, setError] = useState<string>();
   const [saving, setSaving] = useState(false);
 
-  if (!can("catalog.write")) return <Navigate to="/items" replace />;
+  if (!can("menu.write")) return <Navigate to="/items" replace />;
 
   function setVariation(index: number, patch: Partial<DraftVariation>) {
     setVariations((cur) =>
@@ -58,7 +57,7 @@ export function ItemCreatePage() {
     }
     setSaving(true);
     try {
-      const item = await catalog.createItem({
+      const item = await menuApi.createItem({
         name,
         description,
         categoryId: categoryId || undefined,

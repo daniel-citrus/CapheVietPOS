@@ -1,6 +1,6 @@
 /**
- * The client ⇄ server wire contract. The frontend's `HttpCatalogRepository`
- * and `useAgent`, and the backend's route handlers, are the two ends of this.
+ * The client ⇄ server wire contract. The frontend's `menuApi` and `useAgent`,
+ * and the backend's route handlers, are the two ends of this.
  */
 
 import type { ErrorCode } from "./errors";
@@ -14,7 +14,7 @@ export interface ApiErrorBody {
 
 /** `GET /api/meta` */
 export interface Meta {
-  /** Where the catalog reads/writes: in-memory fixtures or live Square. */
+  /** Where the menu reads/writes: in-memory fixtures or live Square. */
   dataSource: "mock" | "square";
   /** Whether the server has an Anthropic key — the chat still works either way. */
   agentAvailable: boolean;

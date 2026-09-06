@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { useRepositories } from "../../repositories/RepositoryContext";
+import { menuApi } from "../../api/menu";
 import { useAsync } from "../../lib/useAsync";
 import { ItemThumbnail } from "../../components/ItemThumbnail";
 import {
@@ -18,17 +18,16 @@ import { t } from "../../i18n/copy";
 import { priceRange } from "./priceRange";
 
 export function ItemsListPage() {
-  const { catalog } = useRepositories();
   const { can } = useAuth();
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
 
   const { data, loading, error, reload } = useAsync(
-    () => catalog.listItems({ includeArchived: true }),
+    () => menuApi.listItems({ includeArchived: true }),
     [],
   );
-  const categories = useAsync(() => catalog.listCategories(), []);
+  const categories = useAsync(() => menuApi.listCategories(), []);
   const categoryName = useMemo(() => {
     const map = new Map((categories.data ?? []).map((c) => [c.id, c.name]));
     return (id?: string) => (id ? map.get(id) ?? "—" : "—");
@@ -47,7 +46,7 @@ export function ItemsListPage() {
       <PageHeader
         title={t("items.title")}
         actions={
-          can("catalog.write") ? (
+          can("menu.write") ? (
             <Button variant="primary" onClick={() => navigate("/items/new")}>
               {t("items.new")}
             </Button>

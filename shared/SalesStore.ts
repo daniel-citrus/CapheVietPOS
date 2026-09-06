@@ -4,7 +4,7 @@
  * customer data is pulled from Square in P1 (live revenue + PII), so every method
  * currently resolves empty.
  */
-export interface SalesRepository {
+export interface SalesStore {
   listOrders(opts?: {
     locationId?: string;
     from?: string;

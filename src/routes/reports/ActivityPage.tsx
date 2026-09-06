@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { AuditEntry } from "shared/api";
-import { apiFetch } from "../../repositories/apiClient";
-import { useCatalogRevision } from "../../repositories/catalogRevision";
+import { apiFetch } from "../../api/client";
+import { useMenuRevision } from "../../api/menuRevision";
 import { useAsync } from "../../lib/useAsync";
 import {
   Badge,
@@ -75,7 +75,7 @@ function Detail({ label, value }: { label: string; value: unknown }) {
 }
 
 export function ActivityPage() {
-  const revision = useCatalogRevision();
+  const revision = useMenuRevision();
   const { data, loading, error, reload } = useAsync(
     () => apiFetch<AuditEntry[]>("/audit?limit=200"),
     [revision],

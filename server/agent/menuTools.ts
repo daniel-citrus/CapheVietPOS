@@ -2,14 +2,14 @@ import type { ToolResult } from "shared/api";
 import type { Item } from "shared/domain";
 import { formatMoney, parseMoney } from "shared/domain";
 import { RepositoryError } from "shared/errors";
-import type { CatalogRepository } from "shared/CatalogRepository";
+import type { MenuStore } from "shared/MenuStore";
 
 export type { ToolResult };
 
 /**
- * The agent's tool surface. Each tool maps to one or a few CatalogRepository
- * calls — the same operations the conventional admin UI performs. Mutating
- * tools are flagged so the chat can gate them behind human confirmation.
+ * The agent's tool surface. Each tool maps to one or a few MenuStore calls —
+ * the same operations the conventional admin UI performs. Mutating tools are
+ * flagged so the chat can gate them behind human confirmation.
  */
 
 export interface ToolSpec {
@@ -196,11 +196,11 @@ function describeItem(item: Item): string {
   return `${item.name}${item.archived ? " (archived)" : ""} — ${prices}`;
 }
 
-/** Executes a single tool call against the repository. */
-export class CatalogToolbox {
-  private readonly repo: CatalogRepository;
+/** Executes a single tool call against the menu store. */
+export class MenuToolbox {
+  private readonly repo: MenuStore;
 
-  constructor(repo: CatalogRepository) {
+  constructor(repo: MenuStore) {
     this.repo = repo;
   }
 

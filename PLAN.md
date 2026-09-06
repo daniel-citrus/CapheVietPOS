@@ -3,12 +3,15 @@
 _Last updated: 2026-09-03. Product: back-office admin console for a US-based, Vietnamese-branded coffee business. Square is the system of record._
 
 > **Status note (2026-09-06):** this plan has been overtaken by events. The app
-> now has a real **Fastify backend** (`server/`) that owns the catalog
-> repository, the Square integration, the agent tool-loop, permission checks,
-> and a SQLite audit log; the React SPA talks only to `/api/*`. That collapses
-> most of P2 and P3 below. The agent (planned as P4) was built early against the
-> mock/Square repository. See **`ARCHITECTURE.md`** for what actually exists.
-> Still stubbed: real auth (an `X-Role` header stands in), deployment.
+> now has a real **Fastify backend** (`server/`) that owns the menu store
+> (`MenuStore` port + in-memory / Square adapters), the Square integration, the
+> agent tool-loop, permission checks, and a SQLite audit log; the React SPA
+> talks only to `/api/*` via a flat `menuApi` module. That collapses most of P2
+> and P3 below. The agent (planned as P4) was built early against the
+> `MenuStore`. See **`ARCHITECTURE.md`** for what actually exists.
+> Below, "repository" / "MockRepository" / "HttpRepository" are the old names
+> for what is now the `MenuStore` port and its adapters. Still stubbed: real
+> auth (an `X-Role` header stands in), deployment.
 
 ## Product framing
 

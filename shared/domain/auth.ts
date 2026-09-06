@@ -16,10 +16,10 @@ export interface CurrentUser {
   role: Role;
 }
 
-export type Capability = "catalog.write" | "pricing.read" | "pricing.write";
+export type Capability = "menu.write" | "pricing.read" | "pricing.write";
 
 const CAPABILITIES: Record<Role, readonly Capability[]> = {
-  admin: ["catalog.write", "pricing.read", "pricing.write"],
+  admin: ["menu.write", "pricing.read", "pricing.write"],
   staff: [],
 };
 

@@ -4,7 +4,7 @@ import { registerAuth } from "./auth";
 import { agentAvailable, config } from "./config";
 import { agentRoutes } from "./routes/agent";
 import { auditRoutes } from "./routes/audit";
-import { catalogRoutes } from "./routes/catalog";
+import { menuRoutes } from "./routes/menu";
 import { metaRoutes } from "./routes/meta";
 import { salesRoutes } from "./routes/sales";
 
@@ -49,7 +49,7 @@ app.setErrorHandler((err: FastifyError, req, reply) => {
 });
 
 app.register(metaRoutes, { prefix: "/api/meta" });
-app.register(catalogRoutes, { prefix: "/api/catalog" });
+app.register(menuRoutes, { prefix: "/api/menu" });
 app.register(salesRoutes, { prefix: "/api/sales" });
 app.register(auditRoutes, { prefix: "/api/audit" });
 app.register(agentRoutes, { prefix: "/api/agent" });

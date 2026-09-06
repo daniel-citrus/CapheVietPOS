@@ -1,5 +1,5 @@
 import { formatMoney } from "shared/domain";
-import { useRepositories } from "../../repositories/RepositoryContext";
+import { menuApi } from "../../api/menu";
 import { useAsync } from "../../lib/useAsync";
 import {
   Badge,
@@ -17,9 +17,8 @@ function ruleLabel(g: ModifierGroup): string {
 }
 
 export function ModifierGroupsPage() {
-  const { catalog } = useRepositories();
   const { data, loading, error, reload } = useAsync(
-    () => catalog.listModifierGroups(),
+    () => menuApi.listModifierGroups(),
     [],
   );
 

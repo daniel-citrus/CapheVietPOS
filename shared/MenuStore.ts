@@ -8,13 +8,16 @@ import type {
 } from "shared/domain";
 
 /**
- * All data access goes through this interface. Components never import fixtures
- * directly. In P1 the implementation is MockCatalogRepository (in-memory, seeded
- * from JSON fixtures). In P2 it becomes HttpCatalogRepository calling the backend
- * proxy, which talks to Square. Every method is async and remote-call-shaped:
- * it returns plain domain objects and rejects with a RepositoryError on failure.
+ * The port for all menu data access. Server-side it is implemented by
+ * `InMemoryMenuStore` (fixtures) or `SquareMenuStore` (the Square API), chosen
+ * by `DATA_SOURCE` and wrapped per-request in `AuditedMenuStore`. The frontend
+ * does not implement it — it calls the `/api/menu/*` endpoints via `menuApi`
+ * (`src/api/menu.ts`), whose method shapes mirror this interface.
+ *
+ * Every method is async and remote-call-shaped: it returns plain domain objects
+ * and rejects with a `RepositoryError` on failure.
  */
-export interface CatalogRepository {
+export interface MenuStore {
   // --- Locations -----------------------------------------------------------
   listLocations(): Promise<Location[]>;
 
@@ -56,8 +59,8 @@ export interface CatalogRepository {
    * Kept as its own method — like setVariationPrice — because it maps to a
    * real capability, not general item fields. Square itself has no "set by
    * URL" operation (only its Images upload API), so implementations may
-   * legitimately reject this; see MockCatalogRepository vs
-   * SquareCatalogRepository.
+   * legitimately reject this; see InMemoryMenuStore vs
+   * SquareMenuStore.
    */
   setItemImage(itemId: string, imageUrl: string | null): Promise<Item>;
 }

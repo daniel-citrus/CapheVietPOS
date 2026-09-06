@@ -7,12 +7,12 @@ import type {
 } from "shared/domain";
 import { config } from "../../config";
 import type {
-  CatalogRepository,
+  MenuStore,
   CreateItemInput,
   CreateVariationInput,
   UpdateItemPatch,
   UpdateVariationPatch,
-} from "shared/CatalogRepository";
+} from "shared/MenuStore";
 import { NotFoundError, RepositoryError, ValidationError } from "shared/errors";
 import {
   categoryFromSquare,
@@ -26,12 +26,12 @@ import {
 /**
  * Talks to Square's Catalog API directly (server-side), setting the access
  * token from `config.square`. The browser never sees this — it calls the
- * backend's `/api/catalog/*` routes.
+ * backend's `/api/menu/*` routes.
  *
  * Writes retrieve the current object first (for its `version`), mutate the
  * tree, and upsert the whole item — Square's optimistic-concurrency model.
  */
-export class SquareCatalogRepository implements CatalogRepository {
+export class SquareMenuStore implements MenuStore {
   private async request<T>(
     path: string,
     init?: RequestInit,

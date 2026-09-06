@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   server: {
-    // Everything server-side — the catalog, sales, the agent loop, and both
+    // Everything server-side — the menu, sales, the agent loop, and both
     // secrets — lives in the Fastify backend. The browser only ever calls
     // `/api/*`; in dev, Vite forwards that to the backend.
     proxy: {

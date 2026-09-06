@@ -1,25 +1,25 @@
 import { formatMoney, type CurrentUser, type Item, type Money } from "shared/domain";
 import type { AuditLog } from "../audit/AuditLog";
 import type {
-  CatalogRepository,
+  MenuStore,
   CreateItemInput,
   CreateVariationInput,
   UpdateItemPatch,
   UpdateVariationPatch,
-} from "shared/CatalogRepository";
+} from "shared/MenuStore";
 
 /**
- * Per-request decorator: passes reads straight through, and records an audit
- * entry around every mutation (who / what / when / before → after). The same
- * wrapper is used by the REST routes and the agent toolbox, so both paths log
- * identically.
+ * Per-request decorator over a `MenuStore`: passes reads straight through, and
+ * records an audit entry around every mutation (who / what / when / before →
+ * after). The same wrapper is used by the REST routes and the agent toolbox, so
+ * both paths log identically.
  */
-export class AuditedCatalogRepository implements CatalogRepository {
-  private readonly inner: CatalogRepository;
+export class AuditedMenuStore implements MenuStore {
+  private readonly inner: MenuStore;
   private readonly audit: AuditLog;
   private readonly actor: CurrentUser;
 
-  constructor(inner: CatalogRepository, audit: AuditLog, actor: CurrentUser) {
+  constructor(inner: MenuStore, audit: AuditLog, actor: CurrentUser) {
     this.inner = inner;
     this.audit = audit;
     this.actor = actor;

@@ -8,11 +8,11 @@ import type {
 } from "shared/domain";
 
 /**
- * Seed data for the mock catalog repository (DATA_SOURCE=mock).
+ * Seed data for the in-memory menu store (DATA_SOURCE=mock).
  *
  * If scripts/export-square-catalog.mjs has been run, `fixtures.generated.json`
- * exists next to this file and is used (real catalog + locations pulled once
- * from Square). Otherwise the hand-authored placeholder below is used.
+ * exists next to this file and is used (real menu + locations pulled once from
+ * Square). Otherwise the hand-authored placeholder below is used.
  * Orders/customers are NOT part of fixtures by design.
  */
 

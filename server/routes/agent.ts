@@ -8,7 +8,7 @@ import type {
 } from "shared/api";
 import { ValidationError } from "shared/errors";
 import { config } from "../config";
-import { CatalogToolbox } from "../agent/catalogTools";
+import { MenuToolbox } from "../agent/menuTools";
 import { resetConversation } from "../agent/conversations";
 import { runClaude } from "../agent/loop";
 import { runOffline } from "../agent/offline";
@@ -53,8 +53,8 @@ export const agentRoutes: FastifyPluginAsync = async (app) => {
     const run: AgentRun = {
       emit,
       signal: controller.signal,
-      toolbox: new CatalogToolbox(req.catalog),
-      canWrite: req.can("catalog.write"),
+      toolbox: new MenuToolbox(req.menu),
+      canWrite: req.can("menu.write"),
       confirm: (call: ToolCall) => {
         if (autoConfirm) return Promise.resolve(true);
         emit({ type: "awaiting_confirmation", call });

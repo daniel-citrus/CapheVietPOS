@@ -1,7 +1,7 @@
 # Architecture
 
 _Cà phê Việt menu admin — the whole app, as built. Companion docs: `DOMAIN.md`
-(catalog model), `PLAN.md` (phasing & decisions), `README.md` (setup)._
+(domain model), `PLAN.md` (phasing & decisions), `README.md` (setup)._
 
 ---
 
@@ -22,13 +22,13 @@ catalog of record is **Square**. It has two parts:
 | **Assistant** (default) | Agent-first chat. You describe menu changes in plain language; the backend runs an LLM tool-loop (or a small offline parser when no key is set) and streams the result. Every mutation is gated by a human **Apply / Skip** card. | `features/assistant/AssistantView` — mobile |
 | **Console** | Conventional admin console: React-Router screens for Items, Categories, Modifier groups, Pricing, and navigable reporting scaffolds. | `layout/AppShell` — sidebar |
 
-Both surfaces call the **same contract** — the `CatalogRepository` interface —
-implemented client-side by a thin `HttpCatalogRepository` (one `fetch` per
-method). Behind the API, the same interface is implemented by the mock or the
-Square repository. Swapping the two is a server-side env flag, not a code
-change.
+Both surfaces reach the same backend endpoints. The frontend calls `/api/menu/*`
+through a flat typed module (`menuApi`, `src/api/menu.ts`) — one `fetch` per
+function, no logic. Server-side, those endpoints are backed by the **`MenuStore`**
+port (`shared/MenuStore.ts`), implemented by either the in-memory or the Square
+adapter; swapping the two is a server-side env flag, not a code change.
 
-Everything is stateless with respect to the catalog (Square is the source of
+Everything is stateless with respect to the menu (Square is the source of
 truth); the one piece of persistence is the SQLite **audit log**, written
 behind an `AuditLog` interface so it can become Postgres later.
 
@@ -42,7 +42,7 @@ behind an `AuditLog` interface so it can become Postgres later.
 | Backend | Fastify 5 on Node 24, run in dev by `tsx watch` |
 | LLM | `@anthropic-ai/sdk` — **server-side only** (streaming, tool use) |
 | Audit log | `better-sqlite3` behind an `AuditLog` interface |
-| Shared | `shared/` — the domain model, the repository interfaces, the wire contract, the error types; imported by both sides via the `shared/*` path alias |
+| Shared | `shared/` — the domain model, the `MenuStore` / `SalesStore` interfaces, the wire contract, the error types; imported by both sides via the `shared/*` path alias |
 | Lint | oxlint · **no test framework yet** |
 
 Runtime deps: `react`, `react-dom`, `react-router-dom` (client); `fastify`,
@@ -58,28 +58,28 @@ flowchart TD
   BROWSER -->|"REST · SSE"| API
 
   subgraph API["Fastify backend (server/)"]
-    ROUTES["routes/ — catalog · sales · agent · meta · audit"]
+    ROUTES["routes/ — menu · sales · agent · meta · audit"]
     AUTH["auth hook — X-Role → currentUser / can()"]
-    AUDITED["AuditedCatalogRepository<br/>(per request, wraps the repo)"]
+    AUDITED["AuditedMenuStore<br/>(per request, wraps the store)"]
     AGENT["agent/ — loop (Claude) · offline (regex)<br/>· confirm round-trip"]
     ROUTES --> AUTH --> AUDITED
     ROUTES --> AGENT --> AUDITED
   end
 
-  AUDITED --> REPO
+  AUDITED --> PORT
   AGENT -. "toolbox" .-> AUDITED
 
-  REPO["CatalogRepository (shared interface)"]
-  REPO --> SEL{"DATA_SOURCE"}
-  SEL -->|"mock (default)"| MOCK["MockCatalogRepository<br/>in-memory fixtures"]
-  SEL -->|"square"| SQ["SquareCatalogRepository<br/>+ anti-corruption mapper"]
+  PORT["MenuStore (shared port)"]
+  PORT --> SEL{"DATA_SOURCE"}
+  SEL -->|"mock (default)"| MEM["InMemoryMenuStore<br/>in-memory fixtures"]
+  SEL -->|"square"| SQ["SquareMenuStore<br/>+ anti-corruption mapper"]
 
   SQ -->|"token server-side"| SQUARE["Square Catalog API"]
   AGENT -->|"key server-side"| ANTHROPIC["Anthropic API"]
   AUDITED --> LOG["SqliteAuditLog"]
 
   classDef seam fill:#f5e9e4,stroke:#7d1f2d,color:#3a1a14;
-  class REPO,MOCK,SQ seam
+  class PORT,MEM,SQ seam
 ```
 
 The browser holds no secrets and makes no third-party calls. The backend is the
@@ -93,20 +93,20 @@ only trust boundary.
 
 ```mermaid
 flowchart TD
-  A["RepositoryProvider<br/>builds HttpCatalog/HttpSales once"]
-  B["AuthProvider<br/>stub role → sessionStorage + apiClient X-Role header"]
+  B["AuthProvider<br/>stub role → sessionStorage + api/client X-Role header"]
   M["MetaProvider<br/>GET /api/meta → { dataSource, agentAvailable }"]
   C["SettingsProvider<br/>mode + requireConfirmation → localStorage"]
   D{"Surface: settings.mode"}
-  A --> B --> M --> C --> D
+  B --> M --> C --> D
   D -->|assistant| E["AssistantView"]
   D -->|console| F["ConsoleApp — BrowserRouter → LocationProvider → Routes"]
 ```
 
-`apiClient.ts` is the single fetch wrapper: it attaches the current `X-Role`
-header and rebuilds a `{ error: { code, message } }` response into the typed
-`RepositoryError` family, so component `catch` blocks are unchanged from when
-the repos ran in the browser.
+There is no repository provider or DI: screens import `menuApi` (`src/api/menu.ts`)
+directly. `src/api/client.ts` is the single fetch wrapper: it attaches the current
+`X-Role` header and rebuilds a `{ error: { code, message } }` response into the typed
+`RepositoryError` family, so component `catch` blocks can branch on
+`ValidationError` / `PermissionError` / `NotFoundError` directly.
 
 ---
 
@@ -137,7 +137,7 @@ sequenceDiagram
   participant L as loop.ts / offline.ts
   participant API as Anthropic API
   participant P as pending.ts
-  participant TB as CatalogToolbox → req.catalog
+  participant TB as MenuToolbox → req.menu
 
   U->>R: { conversationId, message }
   R->>R: hijack reply, open SSE
@@ -160,7 +160,7 @@ sequenceDiagram
   L-->>U: data: {type:"done"}
 ```
 
-- **Permission**: a mutating tool checks `run.canWrite` (`req.can("catalog.write")`)
+- **Permission**: a mutating tool checks `run.canWrite` (`req.can("menu.write")`)
   server-side. Staff get a `tool_result` error, no card.
 - **History**: in-memory per `conversationId` (`conversations.ts`, bounded).
   Restart resets conversations — same as before.
@@ -168,13 +168,12 @@ sequenceDiagram
   Anthropic stream and denies all pending deferreds; a per-call 5-minute timeout
   auto-denies so a never-answered card can't wedge the turn.
 
-### 5.3 Tool surface (`server/agent/catalogTools.ts`)
+### 5.3 Tool surface (`server/agent/menuTools.ts`)
 
-12 tools, each mapping to one or a few `CatalogRepository` calls, plus the fuzzy
+12 tools, each mapping to one or a few `MenuStore` calls, plus the fuzzy
 resolution the model relies on (`resolveItem` by id → exact name → unique
-substring; `resolveCategoryId`; `pickVariation`; `money()`). Unchanged from the
-in-browser version — it only ever touched a `CatalogRepository`, which is now
-`req.catalog` (the audited wrapper).
+substring; `resolveCategoryId`; `pickVariation`; `money()`). `MenuToolbox` only
+ever touches a `MenuStore`, which at runtime is `req.menu` (the audited wrapper).
 
 ---
 
@@ -182,14 +181,14 @@ in-browser version — it only ever touched a `CatalogRepository`, which is now
 
 Route-based (`src/routes/`), rendered inside `AppShell` (capability-filtered
 sidebar, role switcher, data-source badge, the mode toggle). Screens call
-`useAsync(() => catalog.<method>(), [deps])` — a ~40-line hook
+`useAsync(() => menuApi.<method>(), [deps])` — a ~40-line hook
 (`{ data, loading, error, reload }`) — and `reload()` after a mutation. They
-also subscribe to `useCatalogRevision()` so a change made in chat shows up in
+also subscribe to `useMenuRevision()` so a change made in chat shows up in
 the Console list without a manual refresh (§7.4).
 
 Every Console chrome string goes through `t()` (`src/i18n/copy.ts`) — a single
 English dictionary today; a Vietnamese translation is a second dictionary plus a
-language switch, with no component changes. Catalog content (item names like
+language switch, with no component changes. Menu content (item names like
 "Cà phê sữa đá") is data, never routed through `t()`.
 
 | Path | Purpose |
@@ -214,51 +213,61 @@ Square**. Full detail in `DOMAIN.md`. Shapes: `Money` (integer minor units),
 `effectivePrice`, and the stub auth model (`can(role, capability)`,
 `userForRole`, `roleFromHeader`).
 
-### 7.2 Repository layer
+### 7.2 The menu store (`MenuStore`)
 
 ```mermaid
 flowchart LR
   subgraph SHARED["shared/"]
-    CI["CatalogRepository (interface)<br/>15 methods · async · rejects with RepositoryError"]
-    SI["SalesRepository (interface)"]
+    PORT["MenuStore (port)<br/>15 methods · async · rejects with RepositoryError"]
+    SS["SalesStore (port)"]
   end
-  subgraph CLIENT["src/repositories/"]
-    HC["HttpCatalogRepository"] -->|implements| CI
-    HS["HttpSalesRepository"] -->|implements| SI
+  subgraph CLIENT["src/api/"]
+    MA["menuApi — 15 fetch fns"]
+    CL["client.ts — apiFetch + X-Role"]
+    MA --> CL
   end
-  subgraph SERVER["server/catalog/"]
-    MC["MockCatalogRepository"] -->|implements| CI
-    SC["SquareCatalogRepository"] -->|implements| CI
-    AC["AuditedCatalogRepository"] -->|implements + wraps| CI
-    MS["MockSalesRepository"] -->|implements| SI
-    SC -->|uses| MAP["square/mapper.ts"]
+  subgraph SERVER["server/menu/"]
+    MEM["InMemoryMenuStore"] -->|implements| PORT
+    SQ["SquareMenuStore"] -->|implements| PORT
+    AUD["AuditedMenuStore"] -->|"implements + wraps"| PORT
+    MEMS["InMemorySalesStore"] -->|implements| SS
+    SQ -->|uses| MAP["square/mapper.ts"]
   end
-  HC -->|"fetch /api/catalog/*"| SERVER
+  CL -->|"fetch /api/menu/*"| SERVER
 ```
 
-- `HttpCatalogRepository` — one `fetch` per method; `apiClient` maps the error
-  body back to `ValidationError` / `PermissionError` / `NotFoundError`.
-- `MockCatalogRepository` — in-memory arrays from `fixtures` (deep-cloned reads,
-  session-only writes, 180 ms simulated latency). Picks up
-  `fixtures.generated.json` if the Square export was run.
-- `SquareCatalogRepository` — retrieve → mutate tree → upsert whole ITEM
-  (Square's optimistic-concurrency model); sets the auth header itself.
-- `AuditedCatalogRepository` — built **per request** with `req.currentUser`;
-  records who/what/before→after around each mutation, passes reads through.
-  Used by the REST routes *and* the agent toolbox, so both log identically.
-- `factory.ts` picks Mock vs Square from `DATA_SOURCE` (singleton).
+The **port** is `MenuStore` (`shared/MenuStore.ts`): 15 async methods returning
+domain objects, rejecting with `RepositoryError`. Server-side it has three
+implementations; the frontend does **not** implement it.
 
-### 7.3 Anti-corruption layer (`server/catalog/square/mapper.ts`)
+- **Client** — `menuApi` (`src/api/menu.ts`) is a flat object of 15 functions,
+  one `fetch` to `/api/menu/*` each, no logic. `client.ts` (`apiFetch`) attaches
+  `X-Role` and maps an error body back to `ValidationError` / `PermissionError` /
+  `NotFoundError`. `menuApi`'s method shapes are checked against the port's input
+  types, which it imports from `shared/MenuStore.ts`.
+- **`InMemoryMenuStore`** (adapter) — in-memory arrays from `fixtures`
+  (deep-cloned reads, session-only writes, 180 ms simulated latency). Picks up
+  `fixtures.generated.json` if the Square export was run.
+- **`SquareMenuStore`** (adapter) — retrieve → mutate tree → upsert whole ITEM
+  (Square's optimistic-concurrency model); sets the auth header itself.
+- **`AuditedMenuStore`** (decorator) — built **per request** with
+  `req.currentUser`; records who/what/before→after around each mutation, passes
+  reads through. Wraps whichever adapter `factory.ts` chose, and is used by the
+  REST routes *and* the agent toolbox, so both log identically.
+- `factory.ts` picks the in-memory vs Square adapter from `DATA_SOURCE`
+  (process singleton); `auth.ts` wraps it in `AuditedMenuStore` as `req.menu`.
+
+### 7.3 Anti-corruption layer (`server/menu/square/mapper.ts`)
 
 Quarantines every Square-ism — the `type` discriminator, nested `*_data`,
 `version` numbers, temp `#name` ids, `categories[]` vs legacy `category_id`,
 `modifier_list_info[].enabled`, `image_ids[]` → `CatalogImage` URL. Nothing
-outside `server/catalog/square/` imports it.
+outside `server/menu/square/` imports it.
 
-### 7.4 Cross-surface reactivity (`src/repositories/catalogRevision.ts`)
+### 7.4 Cross-surface reactivity (`src/api/menuRevision.ts`)
 
 A module-level counter read through `useSyncExternalStore`. `useAgent` bumps it
-after a successful mutating tool; Console screens include `useCatalogRevision()`
+after a successful mutating tool; Console screens include `useMenuRevision()`
 in their `useAsync` deps. The only shared *state* between the two surfaces;
 everything else flows through the API.
 
@@ -270,7 +279,7 @@ ends import to stay in sync.
 
 ### 7.6 Audit log
 
-`AuditedCatalogRepository` (§7.2) writes to an `AuditLog` — one implementation
+`AuditedMenuStore` (§7.2) writes to an `AuditLog` — one implementation
 today, `SqliteAuditLog` (`better-sqlite3`, one append-only table at
 `SQLITE_PATH`, created on boot). Swapping to Postgres is a second impl of the
 same interface. Each entry is `{ at, actorRole, actorId, action, entityType,
@@ -278,7 +287,7 @@ entityId, summary, before?, after? }`; `summary` is the human line
 (`Cà phê sữa đá (M) $4.50 → $4.75`), `before`/`after` the raw snapshots.
 `GET /api/audit?limit=` returns recent entries; the Console's **Activity** tab
 (`routes/reports/ActivityPage`) renders them and re-fetches on
-`useCatalogRevision()` so a chat edit shows up immediately.
+`useMenuRevision()` so a chat edit shows up immediately.
 
 ---
 
@@ -292,7 +301,7 @@ and reads `GET /api/meta` for the two facts it needs.
 |---|---|---|
 | `API_PORT` | backend + `vite.config.ts` | port the backend listens on / Vite proxies to (default 3001) |
 | `DATA_SOURCE` | backend | `mock` (default) or `square` |
-| `SQUARE_ACCESS_TOKEN` | **backend only** | Square API auth — set by `SquareCatalogRepository` |
+| `SQUARE_ACCESS_TOKEN` | **backend only** | Square API auth — set by `SquareMenuStore` |
 | `SQUARE_ENVIRONMENT` | backend, `scripts/` | `sandbox` \| `production` → Square host |
 | `SQUARE_LOCATION_ID` | `scripts/` (optional) | pin one location |
 | `ANTHROPIC_API_KEY` | **backend only** | agent LLM; empty → offline parser |
@@ -318,7 +327,7 @@ that as the actor and enforces `can(role, capability)`:
 
 | Capability | admin | staff |
 |---|---|---|
-| `catalog.write` · `pricing.read` · `pricing.write` | ✔ | — |
+| `menu.write` · `pricing.read` · `pricing.write` | ✔ | — |
 
 - **Console** hides nav items / edit controls and redirects unauthorised routes;
   the backend also returns 403.
@@ -333,11 +342,11 @@ The capability model lives in `shared/domain/auth.ts` so both ends agree.
 
 | Area | State |
 |---|---|
-| Persistence of mock writes | none — restart the backend and it reverts to fixtures |
-| Catalog persistence | Square is the source of truth; the backend caches nothing |
+| Persistence of in-memory writes | none — restart the backend and it reverts to fixtures |
+| Menu persistence | Square is the source of truth; the backend caches nothing |
 | Reporting / analytics / orders | navigable scaffolds; no order data pulled |
 | Modifier-group editing | read-only in the Console; the agent has no modifier-group tools at all |
-| Item image uploads against Square | reading an existing image works; setting one only works against the mock (Square needs a file upload, not a URL) |
+| Item image uploads against Square | reading an existing image works; setting one only works against the in-memory store (Square needs a file upload, not a URL) |
 | Audit log | append-only SQLite (surfaced read-only in the **Activity** tab); no retention policy, no Postgres impl yet |
 | Auth | stubbed `X-Role` header; no real identity |
 | Conversation history | in-memory, lost on backend restart |
@@ -353,7 +362,7 @@ flowchart LR
   subgraph NOW["Now — this branch"]
     direction TB
     N1["React SPA + Fastify backend"]
-    N2["Backend owns catalog + agent + audit log"]
+    N2["Backend owns the menu store + agent + audit log"]
     N3["Mock or Square, per DATA_SOURCE"]
     N1 --> N2 --> N3
   end
@@ -367,9 +376,9 @@ flowchart LR
   NOW --> NEXT
 ```
 
-The `CatalogRepository` interface, the domain model, both surfaces, and the
-agent tools stay stable across phases — only the repository implementation, the
-audit-log backend, and the auth internals change.
+The `MenuStore` port, the domain model, both surfaces, and the agent tools stay
+stable across phases — only the adapter behind the port, the audit-log backend,
+and the auth internals change.
 
 ---
 
@@ -377,23 +386,23 @@ audit-log backend, and the auth internals change.
 
 ```
 shared/                          imported by both sides via the `shared/*` alias
-  domain/                        catalog model + stub auth (see DOMAIN.md)
-  CatalogRepository.ts           the interface both sides implement
-  SalesRepository.ts
+  domain/                        menu model + stub auth (see DOMAIN.md)
+  MenuStore.ts                   the port the server implements + client input types
+  SalesStore.ts
   errors.ts                      RepositoryError family + ErrorCode + errorFromWire()
   api.ts                         REST + agent SSE wire contract
 
 server/                          Fastify backend — run by `tsx watch` in dev
   index.ts                       bootstrap: content-type parser, auth, error handler, routes
   config.ts                      env (DATA_SOURCE + both secrets) — read once
-  auth.ts                        X-Role onRequest hook → req.currentUser / can() / catalog
-  catalog/
-    factory.ts                   Mock vs Square from DATA_SOURCE
-    AuditedCatalogRepository.ts  per-request decorator: logs every mutation
-    mock/                        MockCatalog/SalesRepository + fixtures
-    square/                      SquareCatalogRepository + mapper.ts
+  auth.ts                        X-Role onRequest hook → req.currentUser / can() / menu
+  menu/
+    factory.ts                   in-memory vs Square adapter from DATA_SOURCE
+    AuditedMenuStore.ts          per-request decorator: logs every mutation
+    memory/                      InMemoryMenuStore + InMemorySalesStore + fixtures
+    square/                      SquareMenuStore + mapper.ts
   agent/
-    catalogTools.ts              12 tool specs + CatalogToolbox
+    menuTools.ts                 12 tool specs + MenuToolbox
     loop.ts                      Claude tool-use loop, streams AgentEvents
     offline.ts                   regex fallback (no ANTHROPIC_API_KEY)
     run.ts                       shared per-tool-call path (announce → confirm → execute)
@@ -402,29 +411,27 @@ server/                          Fastify backend — run by `tsx watch` in dev
   audit/
     AuditLog.ts                  interface { record, list }
     SqliteAuditLog.ts            better-sqlite3 impl; one append-only table
-  routes/                        catalog · sales · agent · meta · audit
+  routes/                        menu · sales · agent · meta · audit
 
 src/                             React SPA — talks only to /api/*
   App.tsx                        provider tree + Assistant/Console switch
-  repositories/
-    apiClient.ts                 fetch wrapper: X-Role header + typed errors
-    HttpCatalogRepository.ts     one fetch per CatalogRepository method
-    HttpSalesRepository.ts
-    RepositoryContext.tsx        builds the Http* pair
-    catalogRevision.ts           cross-surface "catalog changed" counter
+  api/
+    client.ts                    fetch wrapper: X-Role header + typed errors
+    menu.ts                      menuApi — one fetch fn per /api/menu/* endpoint
+    menuRevision.ts              cross-surface "menu changed" counter
   meta/MetaContext.tsx           GET /api/meta once
   agent/useAgent.ts              SSE client for /api/agent/chat + confirm/abort
-  auth/AuthContext.tsx           stub role → sessionStorage + apiClient
+  auth/AuthContext.tsx           stub role → sessionStorage + api/client
   settings/SettingsContext.tsx   mode + requireConfirmation → localStorage
   location/LocationContext.tsx   current location (Console-only)
   i18n/copy.ts                   t() — the single English dictionary for Console chrome (§6)
   features/assistant/ · features/chat/   the mobile chat shell + transcript
   layout/AppShell.tsx            Console shell
-  routes/                        Console pages: catalog/ · pricing/ · reports/{ActivityPage, scaffolds} · NotFoundPage
+  routes/                        Console pages: menu/ · pricing/ · reports/{ActivityPage, scaffolds} · NotFoundPage
   components/                    ModeToggle · ui.tsx · ItemThumbnail · PhinMark
   lib/                           useAsync · placeholderImage
 
-scripts/export-square-catalog.mjs   one-time pull → server/catalog/mock/fixtures.generated.json
+scripts/export-square-catalog.mjs   one-time pull → server/menu/memory/fixtures.generated.json
 vite.config.ts                      React + Tailwind + a single /api proxy
 tsconfig.{app,server,node}.json     three projects; `shared/*` path alias in app + server
 ```

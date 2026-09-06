@@ -1,4 +1,4 @@
 export * from "./money";
 export * from "./location";
-export * from "./catalog";
+export * from "./menu";
 export * from "./auth";

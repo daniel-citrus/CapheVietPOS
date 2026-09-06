@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
-import { useRepositories } from "../../repositories/RepositoryContext";
+import { menuApi } from "../../api/menu";
 import { useAsync } from "../../lib/useAsync";
 import {
   Button,
@@ -14,11 +14,10 @@ import {
 import { t } from "../../i18n/copy";
 
 export function CategoriesPage() {
-  const { catalog } = useRepositories();
   const { can } = useAuth();
-  const writable = can("catalog.write");
+  const writable = can("menu.write");
   const { data, loading, error, reload } = useAsync(
-    () => catalog.listCategories(),
+    () => menuApi.listCategories(),
     [],
   );
 
@@ -31,7 +30,7 @@ export function CategoriesPage() {
     if (!newName.trim()) return;
     setBusy(true);
     try {
-      await catalog.createCategory({ name: newName });
+      await menuApi.createCategory({ name: newName });
       setNewName("");
       reload();
     } finally {
@@ -42,7 +41,7 @@ export function CategoriesPage() {
   async function rename(id: string) {
     setBusy(true);
     try {
-      await catalog.renameCategory(id, editName);
+      await menuApi.renameCategory(id, editName);
       setEditingId(undefined);
       reload();
     } finally {

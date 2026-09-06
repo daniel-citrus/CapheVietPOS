@@ -6,10 +6,10 @@ import {
   type ReactNode,
 } from "react";
 import type { Meta } from "shared/api";
-import { apiFetch } from "../repositories/apiClient";
+import { apiFetch } from "../api/client";
 
 /**
- * `GET /api/meta`, fetched once. Tells the UI which catalog source is live
+ * `GET /api/meta`, fetched once. Tells the UI which menu source is live
  * (for the badge and the image-edit gate) and whether the agent has an
  * Anthropic key (for the chat intro copy). The chat works either way.
  */

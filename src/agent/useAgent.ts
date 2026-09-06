@@ -2,8 +2,8 @@ import { useCallback, useRef, useState } from "react";
 import type { AgentEvent, ToolCall, ToolResult } from "shared/api";
 import { useAuth } from "../auth/AuthContext";
 import { useMeta } from "../meta/MetaContext";
-import { bumpCatalogRevision } from "../repositories/catalogRevision";
-import { currentRoleHeader } from "../repositories/apiClient";
+import { bumpMenuRevision } from "../api/menuRevision";
+import { currentRoleHeader } from "../api/client";
 import { useSettings } from "../settings/SettingsContext";
 
 /**
@@ -58,7 +58,7 @@ export function useAgent() {
   const { can } = useAuth();
   const { agentAvailable } = useMeta();
   const { requireConfirmation } = useSettings();
-  const canWrite = can("catalog.write");
+  const canWrite = can("menu.write");
 
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [busy, setBusy] = useState(false);
@@ -146,7 +146,7 @@ export function useAgent() {
                 : e,
             ),
           );
-          if (event.result.ok && event.call.mutates) bumpCatalogRevision();
+          if (event.result.ok && event.call.mutates) bumpMenuRevision();
           break;
         }
         case "notice":

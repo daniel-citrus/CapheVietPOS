@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { Location } from "shared/domain";
 import { useAsync } from "../lib/useAsync";
-import { useRepositories } from "../repositories/RepositoryContext";
+import { menuApi } from "../api/menu";
 import { Spinner } from "../components/ui";
 
 /**
@@ -18,8 +18,7 @@ interface LocationValue {
 const LocationContext = createContext<LocationValue | null>(null);
 
 export function LocationProvider({ children }: { children: ReactNode }) {
-  const { catalog } = useRepositories();
-  const { data, loading, error } = useAsync(() => catalog.listLocations(), []);
+  const { data, loading, error } = useAsync(() => menuApi.listLocations(), []);
 
   if (loading) return <Spinner label="Loading…" />;
   if (error || !data?.length) {

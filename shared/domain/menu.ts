@@ -1,7 +1,7 @@
 import type { Money } from "./money";
 
 /**
- * The internal catalog model is a faithful, ergonomic projection of Square's
+ * The internal menu model is a faithful, ergonomic projection of Square's
  * Catalog API. It must never express anything Square cannot: no combos/bundles,
  * no channel or time-based pricing, no nested modifiers.
  *
@@ -47,8 +47,8 @@ export interface Item {
    * Display image. Maps to Square's item_data.image_ids[0], resolved to its
    * CatalogImage URL. Square only supports attaching an image via its Images
    * API (real file upload); this app can read whatever's already there, but
-   * setting a new one by URL only works against the mock repository — see
-   * CatalogRepository.setItemImage.
+   * setting a new one by URL only works against the in-memory store — see
+   * MenuStore.setItemImage.
    */
   imageUrl?: string;
 }

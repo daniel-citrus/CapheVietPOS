@@ -1,5 +1,5 @@
 import type { AgentEvent, ToolCall } from "shared/api";
-import type { CatalogToolbox } from "./catalogTools";
+import type { MenuToolbox } from "./menuTools";
 
 /** Everything a turn needs, wired up by the `/api/agent/chat` route. */
 export interface AgentRun {
@@ -7,8 +7,8 @@ export interface AgentRun {
   /** Resolves once the human approves (or false on deny / timeout / abort). */
   confirm(call: ToolCall): Promise<boolean>;
   signal: AbortSignal;
-  toolbox: CatalogToolbox;
-  /** From `req.can("catalog.write")` — enforced here, not just in the UI. */
+  toolbox: MenuToolbox;
+  /** From `req.can("menu.write")` — enforced here, not just in the UI. */
   canWrite: boolean;
 }
 

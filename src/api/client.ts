@@ -4,8 +4,8 @@ import { errorFromWire, RepositoryError } from "shared/errors";
 /**
  * The one place the frontend talks to the backend. Attaches the stubbed
  * `X-Role` header (kept current by AuthContext) and turns a `{ error }`
- * response body back into the typed `RepositoryError` family so components
- * catch failures exactly as they did against the old in-browser repos.
+ * response body back into the typed `RepositoryError` family so callers can
+ * `catch` failures by type.
  */
 
 const BASE = "/api";

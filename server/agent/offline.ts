@@ -1,5 +1,5 @@
 import type { ToolCall } from "shared/api";
-import { toolByName } from "./catalogTools";
+import { toolByName } from "./menuTools";
 import { handleToolCall, type AgentRun } from "./run";
 
 /**

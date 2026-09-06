@@ -7,39 +7,35 @@ import {
   type CurrentUser,
 } from "shared/domain";
 import { PermissionError } from "shared/errors";
-import type { CatalogRepository } from "shared/CatalogRepository";
-import { catalogRepository } from "./catalog/factory";
-import { AuditedCatalogRepository } from "./catalog/AuditedCatalogRepository";
+import type { MenuStore } from "shared/MenuStore";
+import { menuStore } from "./menu/factory";
+import { AuditedMenuStore } from "./menu/AuditedMenuStore";
 import { auditLog } from "./audit/factory";
 
 declare module "fastify" {
   interface FastifyRequest {
     currentUser: CurrentUser;
     can(capability: Capability): boolean;
-    /** Per-request, audited wrapper around the shared catalog repository. */
-    catalog: CatalogRepository;
+    /** Per-request, audited wrapper around the shared menu store. */
+    menu: MenuStore;
   }
 }
 
 /**
  * Stub auth: the client sends `X-Role: admin|staff`; the server takes that as
- * the actor and enforces `can()` on every write. `req.catalog` is the audited
+ * the actor and enforces `can()` on every write. `req.menu` is the audited
  * wrapper so UI writes and agent writes are logged identically.
  */
 export function registerAuth(app: FastifyInstance): void {
   app.decorateRequest("currentUser");
   app.decorateRequest("can");
-  app.decorateRequest("catalog");
+  app.decorateRequest("menu");
 
   app.addHook("onRequest", async (req: FastifyRequest) => {
     const role = roleFromHeader(req.headers["x-role"]);
     req.currentUser = userForRole(role);
     req.can = (capability) => canFor(role, capability);
-    req.catalog = new AuditedCatalogRepository(
-      catalogRepository,
-      auditLog,
-      req.currentUser,
-    );
+    req.menu = new AuditedMenuStore(menuStore, auditLog, req.currentUser);
   });
 }
 

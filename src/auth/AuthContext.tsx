@@ -15,13 +15,13 @@ import {
   type CurrentUser,
   type Role,
 } from "shared/domain";
-import { setRoleHeader } from "../repositories/apiClient";
+import { setRoleHeader } from "../api/client";
 
 export type { Capability };
 
 /**
  * Auth is stubbed. The role is a value in context that the "View as" switcher
- * flips; it's also pushed into `apiClient` so every `/api/*` request carries an
+ * flips; it's also pushed into the API client so every `/api/*` request carries an
  * `X-Role` header the server enforces. Real auth replaces the internals later.
  */
 

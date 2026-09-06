@@ -50,7 +50,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
           />
         </div>
         <div className="settings-row">
-          <span>Catalog source</span>
+          <span>Menu source</span>
           <span style={{ color: "var(--muted)" }}>
             {dataSource === "square" ? "Square (live)" : "Mock fixtures"}
           </span>

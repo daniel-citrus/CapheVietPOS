@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ToolCall } from "shared/api";
 import { config } from "../config";
-import { toolByName, toolSpecs } from "./catalogTools";
+import { toolByName, toolSpecs } from "./menuTools";
 import { getHistory } from "./conversations";
 import { handleToolCall, type AgentRun } from "./run";
 
@@ -15,7 +15,7 @@ Guidelines:
 - Before changing an item the user named loosely, use find_item to confirm which one.
 - The app shows the user a confirmation card for every change; you do not need to ask "are you sure" yourself, but do briefly say what you're about to do.
 - If a tool fails, explain the error plainly and suggest a fix.
-- You cannot process orders, run reports, or manage staff — only the menu catalog.`;
+- You cannot process orders, run reports, or manage staff — only the menu.`;
 
 const client = new Anthropic({ apiKey: config.anthropic.apiKey });
 

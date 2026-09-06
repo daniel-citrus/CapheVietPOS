@@ -7,12 +7,12 @@ import type {
   Variation,
 } from "shared/domain";
 import type {
-  CatalogRepository,
+  MenuStore,
   CreateItemInput,
   CreateVariationInput,
   UpdateItemPatch,
   UpdateVariationPatch,
-} from "shared/CatalogRepository";
+} from "shared/MenuStore";
 import { NotFoundError, ValidationError } from "shared/errors";
 import * as fixtures from "./fixtures";
 
@@ -26,11 +26,11 @@ let idCounter = 1000;
 const nextId = (prefix: string) => `${prefix}-${++idCounter}`;
 
 /**
- * In-memory catalog repository for P1. Seeded from fixtures; mutations live only
- * for the session (a refresh reverts to fixtures — this is intentional per PLAN.md).
+ * In-memory menu store for P1. Seeded from fixtures; mutations live only for the
+ * session (a refresh reverts to fixtures — this is intentional per PLAN.md).
  * Returned objects are always deep-cloned so callers cannot mutate the store.
  */
-export class MockCatalogRepository implements CatalogRepository {
+export class InMemoryMenuStore implements MenuStore {
   private locations: Location[];
   private categories: Category[];
   private modifierGroups: ModifierGroup[];

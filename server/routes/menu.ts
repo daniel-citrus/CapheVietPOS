@@ -5,7 +5,7 @@ import type {
   CreateVariationInput,
   UpdateItemPatch,
   UpdateVariationPatch,
-} from "shared/CatalogRepository";
+} from "shared/MenuStore";
 import { requireCapability } from "../auth";
 
 interface ItemParams {
@@ -17,71 +17,71 @@ interface VariationParams {
 }
 
 /**
- * One route per `CatalogRepository` method. Handlers just call `req.catalog`
- * (the audited wrapper) and return the domain object; the repo throws typed
+ * One route per `MenuStore` method. Handlers just call `req.menu` (the audited
+ * wrapper) and return the domain object; the store throws typed
  * `RepositoryError`s which the app-level error handler turns into
  * `{ error: { code, message } }` with the right status.
  */
-export const catalogRoutes: FastifyPluginAsync = async (app) => {
+export const menuRoutes: FastifyPluginAsync = async (app) => {
   // --- locations ------------------------------------------------------
-  app.get("/locations", (req) => req.catalog.listLocations());
+  app.get("/locations", (req) => req.menu.listLocations());
 
   // --- categories ---------------------------------------------------
-  app.get("/categories", (req) => req.catalog.listCategories());
+  app.get("/categories", (req) => req.menu.listCategories());
 
   app.post<{ Body: { name: string } }>("/categories", (req) => {
-    requireCapability(req, "catalog.write");
-    return req.catalog.createCategory({ name: req.body.name });
+    requireCapability(req, "menu.write");
+    return req.menu.createCategory({ name: req.body.name });
   });
 
   app.patch<{ Params: ItemParams; Body: { name: string } }>(
     "/categories/:id",
     (req) => {
-      requireCapability(req, "catalog.write");
-      return req.catalog.renameCategory(req.params.id, req.body.name);
+      requireCapability(req, "menu.write");
+      return req.menu.renameCategory(req.params.id, req.body.name);
     },
   );
 
   // --- modifier groups -------------------------------------------
-  app.get("/modifier-groups", (req) => req.catalog.listModifierGroups());
+  app.get("/modifier-groups", (req) => req.menu.listModifierGroups());
 
   // --- items ---------------------------------------------------
   app.get<{ Querystring: { includeArchived?: string } }>("/items", (req) =>
-    req.catalog.listItems({
+    req.menu.listItems({
       includeArchived: req.query.includeArchived === "true",
     }),
   );
 
   app.get<{ Params: ItemParams }>("/items/:id", (req) =>
-    req.catalog.getItem(req.params.id),
+    req.menu.getItem(req.params.id),
   );
 
   app.post<{ Body: CreateItemInput }>("/items", (req) => {
-    requireCapability(req, "catalog.write");
-    return req.catalog.createItem(req.body);
+    requireCapability(req, "menu.write");
+    return req.menu.createItem(req.body);
   });
 
   app.patch<{ Params: ItemParams; Body: UpdateItemPatch }>(
     "/items/:id",
     (req) => {
-      requireCapability(req, "catalog.write");
-      return req.catalog.updateItem(req.params.id, req.body);
+      requireCapability(req, "menu.write");
+      return req.menu.updateItem(req.params.id, req.body);
     },
   );
 
   app.post<{ Params: ItemParams; Body: { archived: boolean } }>(
     "/items/:id/archived",
     (req) => {
-      requireCapability(req, "catalog.write");
-      return req.catalog.setItemArchived(req.params.id, req.body.archived);
+      requireCapability(req, "menu.write");
+      return req.menu.setItemArchived(req.params.id, req.body.archived);
     },
   );
 
   app.post<{ Params: ItemParams; Body: { imageUrl: string | null } }>(
     "/items/:id/image",
     (req) => {
-      requireCapability(req, "catalog.write");
-      return req.catalog.setItemImage(req.params.id, req.body.imageUrl);
+      requireCapability(req, "menu.write");
+      return req.menu.setItemImage(req.params.id, req.body.imageUrl);
     },
   );
 
@@ -89,24 +89,24 @@ export const catalogRoutes: FastifyPluginAsync = async (app) => {
   app.post<{ Params: ItemParams; Body: CreateVariationInput }>(
     "/items/:id/variations",
     (req) => {
-      requireCapability(req, "catalog.write");
-      return req.catalog.addVariation(req.params.id, req.body);
+      requireCapability(req, "menu.write");
+      return req.menu.addVariation(req.params.id, req.body);
     },
   );
 
   app.patch<{ Params: VariationParams; Body: UpdateVariationPatch }>(
     "/items/:id/variations/:vid",
     (req) => {
-      requireCapability(req, "catalog.write");
-      return req.catalog.updateVariation(req.params.id, req.params.vid, req.body);
+      requireCapability(req, "menu.write");
+      return req.menu.updateVariation(req.params.id, req.params.vid, req.body);
     },
   );
 
   app.delete<{ Params: VariationParams }>(
     "/items/:id/variations/:vid",
     (req) => {
-      requireCapability(req, "catalog.write");
-      return req.catalog.removeVariation(req.params.id, req.params.vid);
+      requireCapability(req, "menu.write");
+      return req.menu.removeVariation(req.params.id, req.params.vid);
     },
   );
 
@@ -114,7 +114,7 @@ export const catalogRoutes: FastifyPluginAsync = async (app) => {
     "/items/:id/variations/:vid/price",
     (req) => {
       requireCapability(req, "pricing.write");
-      return req.catalog.setVariationPrice(
+      return req.menu.setVariationPrice(
         req.params.id,
         req.params.vid,
         req.body.price,

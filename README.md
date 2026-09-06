@@ -49,21 +49,21 @@ browser bundle at all.
 
 For production, replace the dev setup with a deployed Node process (`npm run
 build` → static client, `npm run build:api` → bundled server) and real auth in
-place of the `X-Role` stub. `HttpCatalogRepository` and `useAgent` already call
-`/api/*`, so the client doesn't change.
+place of the `X-Role` stub. `menuApi` (`src/api/menu.ts`) and `useAgent` already
+call `/api/*`, so the client doesn't change.
 
 ### Freezing a real menu as fixtures (optional)
 
-`npm run export:catalog` pulls the real catalog + locations from Square once
+`npm run export:catalog` pulls the real menu + locations from Square once
 (using `SQUARE_ACCESS_TOKEN` from `.env.local`) and writes
-`server/catalog/mock/fixtures.generated.json`, which the mock repository picks
+`server/menu/memory/fixtures.generated.json`, which `InMemoryMenuStore` picks
 up automatically. Orders and customers are never pulled.
 
 ## Layout
 
 ```
-shared/     domain model, repository interfaces, wire contract, error types
-server/     Fastify backend — catalog/agent/audit; run by `tsx watch` in dev
+shared/     domain model, MenuStore/SalesStore ports, wire contract, error types
+server/     Fastify backend — menu store / agent / audit; run by `tsx watch` in dev
 src/        React SPA — talks only to /api/*
 ```
 

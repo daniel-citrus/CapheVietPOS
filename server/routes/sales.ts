@@ -1,15 +1,15 @@
 import type { FastifyPluginAsync } from "fastify";
-import { salesRepository } from "../catalog/factory";
+import { salesStore } from "../menu/factory";
 
 /** Reporting scaffolds. No order/customer data is pulled — everything resolves empty. */
 export const salesRoutes: FastifyPluginAsync = async (app) => {
   app.get<{ Querystring: { locationId?: string; from?: string; to?: string } }>(
     "/orders",
-    (req) => salesRepository.listOrders(req.query),
+    (req) => salesStore.listOrders(req.query),
   );
 
   app.get<{ Querystring: { locationId?: string; from?: string; to?: string } }>(
     "/summary",
-    (req) => salesRepository.getSalesSummary(req.query),
+    (req) => salesStore.getSalesSummary(req.query),
   );
 };

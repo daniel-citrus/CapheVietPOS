@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 import { formatMoney, parseMoney } from "shared/domain";
 import type { Item } from "shared/domain";
 import { useAuth } from "../../auth/AuthContext";
-import { useRepositories } from "../../repositories/RepositoryContext";
+import { menuApi } from "../../api/menu";
 import { useAsync } from "../../lib/useAsync";
 import {
   Button,
@@ -16,10 +16,9 @@ import {
 import { t } from "../../i18n/copy";
 
 export function PricingPage() {
-  const { catalog } = useRepositories();
   const { can } = useAuth();
   const { data, loading, error, reload } = useAsync(
-    () => catalog.listItems({ includeArchived: false }),
+    () => menuApi.listItems({ includeArchived: false }),
     [],
   );
 
@@ -89,7 +88,6 @@ function PriceRow({
   writable: boolean;
   onSaved: () => void;
 }) {
-  const { catalog } = useRepositories();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState((price.amount / 100).toFixed(2));
   const [error, setError] = useState<string>();
@@ -104,7 +102,7 @@ function PriceRow({
     setSaving(true);
     setError(undefined);
     try {
-      await catalog.setVariationPrice(item.id, variationId, parsed);
+      await menuApi.setVariationPrice(item.id, variationId, parsed);
       setEditing(false);
       onSaved();
     } catch (e) {

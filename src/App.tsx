@@ -5,12 +5,11 @@ import { AssistantView } from "./features/assistant/AssistantView";
 import { AppShell } from "./layout/AppShell";
 import { LocationProvider } from "./location/LocationContext";
 import { MetaProvider } from "./meta/MetaContext";
-import { RepositoryProvider } from "./repositories/RepositoryContext";
-import { CategoriesPage } from "./routes/catalog/CategoriesPage";
-import { ItemCreatePage } from "./routes/catalog/ItemCreatePage";
-import { ItemDetailPage } from "./routes/catalog/ItemDetailPage";
-import { ItemsListPage } from "./routes/catalog/ItemsListPage";
-import { ModifierGroupsPage } from "./routes/catalog/ModifierGroupsPage";
+import { CategoriesPage } from "./routes/menu/CategoriesPage";
+import { ItemCreatePage } from "./routes/menu/ItemCreatePage";
+import { ItemDetailPage } from "./routes/menu/ItemDetailPage";
+import { ItemsListPage } from "./routes/menu/ItemsListPage";
+import { ModifierGroupsPage } from "./routes/menu/ModifierGroupsPage";
 import { NotFoundPage } from "./routes/NotFoundPage";
 import { ActivityPage } from "./routes/reports/ActivityPage";
 import { AnalyticsPage } from "./routes/reports/AnalyticsPage";
@@ -51,14 +50,12 @@ function Surface() {
 
 export default function App() {
   return (
-    <RepositoryProvider>
-      <AuthProvider>
-        <MetaProvider>
-          <SettingsProvider>
-            <Surface />
-          </SettingsProvider>
-        </MetaProvider>
-      </AuthProvider>
-    </RepositoryProvider>
+    <AuthProvider>
+      <MetaProvider>
+        <SettingsProvider>
+          <Surface />
+        </SettingsProvider>
+      </MetaProvider>
+    </AuthProvider>
   );
 }

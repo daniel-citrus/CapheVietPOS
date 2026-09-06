@@ -3,14 +3,14 @@
  * adding Vietnamese later is a second dictionary object + a language switch, with
  * zero component changes.
  *
- * Product data (item names like "Cà phê sữa đá") is content from the catalog, NOT
+ * Product data (item names like "Cà phê sữa đá") is content from the menu, NOT
  * UI chrome — it is never routed through here.
  */
 const en = {
   "app.title": "Cà phê Việt Admin",
   "app.env.mock": "Mock data — changes are not saved",
 
-  "nav.catalog": "Catalog",
+  "nav.menu": "Menu",
   "nav.items": "Items",
   "nav.categories": "Categories",
   "nav.modifierGroups": "Modifier groups",
