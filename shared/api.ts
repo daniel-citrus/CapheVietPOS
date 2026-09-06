@@ -76,6 +76,9 @@ export interface AgentChatRequest {
   /** Client-generated; the server keeps that conversation's history in memory. */
   conversationId: string;
   message: string;
+  /** When true (the "Confirm every change" toggle is off) mutating tools run
+   * without an `awaiting_confirmation` round-trip. */
+  autoConfirm?: boolean;
 }
 
 /** `POST /api/agent/confirm` request body. */

@@ -2,6 +2,7 @@ import Fastify, { type FastifyError } from "fastify";
 import { RepositoryError } from "shared/errors";
 import { registerAuth } from "./auth";
 import { agentAvailable, config } from "./config";
+import { agentRoutes } from "./routes/agent";
 import { auditRoutes } from "./routes/audit";
 import { catalogRoutes } from "./routes/catalog";
 import { metaRoutes } from "./routes/meta";
@@ -51,6 +52,7 @@ app.register(metaRoutes, { prefix: "/api/meta" });
 app.register(catalogRoutes, { prefix: "/api/catalog" });
 app.register(salesRoutes, { prefix: "/api/sales" });
 app.register(auditRoutes, { prefix: "/api/audit" });
+app.register(agentRoutes, { prefix: "/api/agent" });
 
 const address = await app.listen({ port: config.port, host: "127.0.0.1" });
 app.log.info(
