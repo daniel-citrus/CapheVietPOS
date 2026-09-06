@@ -49,29 +49,24 @@ Runtime dependencies are deliberately few: `react`, `react-dom`,
 
 ```mermaid
 flowchart TD
-  TOGGLE{{"Mode toggle<br/>(SettingsContext)"}}
-
-  ASSIST["Assistant surface<br/>chat → agent (Claude / offline) → tool calls"]
-  CONSOLE["Console surface<br/>sidebar + routed screens"]
-
-  REPO["CatalogRepository<br/>(the interface — the swap seam)"]
-  MOCK["Mock impl<br/>in-memory fixtures"]
-  SQ["Square impl<br/>+ anti-corruption mapper"]
-
-  PROXY["Vite dev proxy<br/>injects both keys server-side — browser holds neither"]
-  ANTHROPIC["Anthropic API"]
-  SQUAREAPI["Square Catalog API"]
-
-  TOGGLE --> ASSIST
+  TOGGLE{{"Mode toggle · SettingsContext"}}
   TOGGLE --> CONSOLE
+  TOGGLE --> ASSIST
+
+  CONSOLE["Console surface<br/>sidebar + routed screens"]
+  ASSIST["Assistant surface<br/>chat → agent (Claude / offline) → tool calls"]
+  CONSOLE -->|"useAsync()"| REPO
   ASSIST -->|"tool calls"| REPO
-  CONSOLE -->|"useAsync"| REPO
-  REPO -. impl .-> MOCK
-  REPO -. impl .-> SQ
-  ASSIST -->|"/api/anthropic"| PROXY
-  SQ --> PROXY
-  PROXY --> ANTHROPIC
-  PROXY --> SQUAREAPI
+
+  REPO["CatalogRepository — the interface (swap seam)"]
+  REPO --> SEL{"VITE_DATA_SOURCE"}
+  SEL -->|"mock (default)"| MOCK["Mock impl<br/>in-memory fixtures"]
+  SEL -->|"square"| SQ["Square impl<br/>+ anti-corruption mapper"]
+
+  SQ -->|"/api/square"| PROXY["Vite dev proxy<br/>injects both keys server-side — browser holds neither"]
+  ASSIST -->|"/api/anthropic<br/>(ClaudeAgent)"| PROXY
+  PROXY --> SQUAREAPI["Square Catalog API"]
+  PROXY --> ANTHROPIC["Anthropic API"]
 
   classDef seam fill:#f5e9e4,stroke:#7d1f2d,color:#3a1a14;
   class REPO,MOCK,SQ seam
